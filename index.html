@@ -4,28 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sistema de OS - Esquadrias</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --primary: #2563eb;
       --bg-dark: #0f172a;
-      --border: #e2e8f0;
+      --border: #cbd5e1;
       --success: #16a34a;
-      --warning: #d97706;
-      --purple: #7c3aed;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background: var(--bg-dark); color: #1e293b; padding: 12px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-    
     .container { width: 100%; max-width: 950px; }
-    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); }
+    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; }
     .badge-Pendente { background: #fef3c7; color: #92400e; }
     .badge-Progress { background: #dbeafe; color: #1e40af; }
     .badge-Fabrica { background: #f3e8ff; color: #6b21a8; }
     .badge-Concluido { background: #dcfce7; color: #166534; }
-
-    /* DASHBOARD MINI CRM */
     .crm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
     .crm-card { background: white; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid var(--border); }
     .crm-card .num { font-size: 22px; font-weight: bold; margin-top: 4px; }
@@ -33,23 +27,19 @@
     .crm-medicao { border-top: 4px solid #2563eb; color: #2563eb; }
     .crm-fabrica { border-top: 4px solid #7c3aed; color: #7c3aed; }
     .crm-pronto { border-top: 4px solid #16a34a; color: #16a34a; }
-
     .schedule-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px; color: #1e40af; }
     .address-box { background: #f1f5f9; padding: 8px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
-
     .btn-grid { display: flex; gap: 6px; margin-top: 8px; }
-    .btn { padding: 10px 14px; border-radius: 6px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; text-align: center; }
+    .btn { padding: 12px 14px; border-radius: 6px; border: none; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; }
     .btn-primary { background: var(--primary); color: white; width: 100%; }
     .btn-outline { background: white; border: 1px solid var(--border); }
-    .btn-maps { background: #ea4335; color: white; }
-    .btn-waze { background: #33ccff; color: black; }
+    .btn-maps { background: #ea4335; color: white; flex: 1; }
+    .btn-waze { background: #33ccff; color: black; flex: 1; }
     .btn-action { background: var(--success); color: white; width: 100%; padding: 12px; font-size: 14px; margin-top: 8px; }
-
-    input, select { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+    input, select { width: 100%; padding: 12px; margin: 6px 0 14px 0; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
     th { background: #f8fafc; color: #64748b; }
-    
     .header-user { background: #1e293b; color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
   </style>
 </head>
@@ -59,27 +49,28 @@
 
     <!-- TELA DE LOGIN -->
     <div id="screen-login" class="card" style="max-width: 400px; margin: 40px auto;">
-      <h2 style="margin-bottom: 12px; text-align: center;">Acesso ao Sistema</h2>
-      <label>Nome do Colaborador</label>
+      <h2 style="margin-bottom: 16px; text-align: center; color: #1e293b;">Acesso ao Sistema</h2>
+      
+      <label><b>Nome do Colaborador</b></label>
       <input type="text" id="login-nome" placeholder="Ex: Carlos Silva" />
       
-      <label>CPF</label>
-      <input type="text" id="login-cpf" placeholder="Ex: 12345678900" />
+      <label><b>CPF</b></label>
+      <input type="text" id="login-cpf" placeholder="Ex: 123.456.789-00" />
       
-      <label>Perfil de Acesso</label>
+      <label><b>Perfil de Acesso</b></label>
       <select id="login-perfil">
         <option value="gestor">💻 Gestor / Produção (Notebook)</option>
         <option value="instalador">👷‍♂️ Campo: Medidor / Instalador (Celular)</option>
       </select>
 
-      <button type="button" class="btn btn-primary" onclick="fazerLogin()">Entrar no Sistema</button>
+      <button type="button" class="btn btn-primary" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
     </div>
 
     <!-- TELA DO GESTOR E FÁBRICA (NOTEBOOK) -->
     <div id="screen-manager" style="display: none;">
       <div class="header-user">
         <span id="gestor-boas-vindas">💻 Painel de Gestão & Produção</span>
-        <button class="btn btn-outline" style="padding: 4px 8px;" onclick="logout()">Sair</button>
+        <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
       </div>
 
       <!-- DASHBOARD MINI CRM -->
@@ -111,7 +102,7 @@
             <input type="text" id="cad-cliente" placeholder="Ex: João Souza" />
           </div>
           <div>
-            <label>Horário da Visita / Atendimento</label>
+            <label>Horário da Visita</label>
             <input type="text" id="cad-horario" placeholder="Ex: Hoje às 14:30" />
           </div>
         </div>
@@ -144,22 +135,22 @@
         <button type="button" class="btn btn-action" onclick="cadastrarOS()">Salvar e Agendar Visita</button>
       </div>
 
-      <!-- PIPELINE DE PRODUÇÃO / FÁBRICA -->
+      <!-- PIPELINE DE PRODUÇÃO -->
       <div class="card">
         <h3>🏭 Pipeline de Produção & Fábrica</h3>
-        <table>
+        <table style="width:100%;">
           <thead>
             <tr>
               <th>OS</th>
               <th>Cliente</th>
-              <th>Tipo / Medidas</th>
+              <th>Produto</th>
               <th>Horário Visita</th>
-              <th>Status Fábrica / Instalação</th>
+              <th>Status</th>
               <th>Ação</th>
             </tr>
           </thead>
           <tbody id="os-list-desktop">
-            <tr><td colspan="6">Nenhum dado cadastrado.</td></tr>
+            <tr><td colspan="6">Nenhuma OS cadastrada ainda.</td></tr>
           </tbody>
         </table>
       </div>
@@ -169,7 +160,7 @@
     <div id="screen-mobile" style="display: none;">
       <div class="header-user">
         <span id="campo-boas-vindas">📱 Minhas Visitas e Instalações</span>
-        <button class="btn btn-outline" style="padding: 4px 8px;" onclick="logout()">Sair</button>
+        <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
       </div>
       <div id="os-list-mobile">Nenhuma ordem registrada.</div>
     </div>
@@ -177,21 +168,10 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://hiexglgdainiccqnfymi.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_r_VqKkPS78Nc0xB8jGMM5Q_ifAgz-xWfByo8YvA5f9-"; 
-
-    let supabase = null;
-
-    function getSupabase() {
-      if (!supabase && window.supabase) {
-        try {
-          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch(e) {
-          console.error("Erro ao inicializar Supabase:", e);
-        }
-      }
-      return supabase;
-    }
+    // Banco de Dados Local do Navegador (Garante funcionamento instantâneo)
+    let bancoOS = JSON.parse(localStorage.getItem('sistema_esquadrias_os')) || [
+      { id: 101, cliente: "Cliente Exemplo", horario_agendado: "Hoje às 15:00", endereco: "Av. Paulista, 1000 - São Paulo", produto: "Janela (1200mm x 1000mm)", status: "Pendente", checkin_time: "" }
+    ];
 
     let usuarioAtual = null;
 
@@ -201,13 +181,12 @@
       const perfil = document.getElementById('login-perfil').value;
 
       if (!nome || !cpf) {
-        alert("Por favor, preencha o Nome e o CPF!");
+        alert("Por favor, preencha o Nome e o CPF para continuar!");
         return;
       }
 
       usuarioAtual = { nome, cpf, perfil };
 
-      // Troca a tela imediatamente sem travar
       document.getElementById('screen-login').style.display = 'none';
 
       if (perfil === 'gestor') {
@@ -218,14 +197,14 @@
         document.getElementById('campo-boas-vindas').innerText = `👷‍♂️ Olá, ${nome}`;
       }
 
-      carregarDados();
+      renderizarTelas();
     }
 
     function logout() { 
       location.reload(); 
     }
 
-    async function cadastrarOS() {
+    function cadastrarOS() {
       const cliente = document.getElementById('cad-cliente').value.trim();
       const horario = document.getElementById('cad-horario').value.trim();
       const tipo = document.getElementById('cad-tipo').value;
@@ -234,23 +213,22 @@
       const endereco = document.getElementById('cad-endereco').value.trim();
 
       if (!cliente || !endereco) { 
-        alert("Preencha os campos de Cliente e Endereço!"); 
+        alert("Por favor, preencha pelo menos o Cliente e o Endereço!"); 
         return; 
       }
 
-      const produtoDesc = `${tipo} (${largura || '0'}mm x ${altura || '0'}mm)`;
-      const client = getSupabase();
+      const novaOS = {
+        id: Math.floor(1000 + Math.random() * 9000),
+        cliente,
+        horario_agendado: horario || 'A combinar',
+        endereco,
+        produto: `${tipo} (${largura || '0'}mm x ${altura || '0'}mm)`,
+        status: 'Pendente',
+        checkin_time: ''
+      };
 
-      if (client) {
-        const { error } = await client.from('ordem_servico').insert([
-          { cliente, horario_agendado: horario, endereco, produto: produtoDesc, status: 'Pendente' }
-        ]);
-
-        if (error) { 
-          alert("Erro ao cadastrar OS: " + error.message); 
-          return;
-        }
-      }
+      bancoOS.unshift(novaOS);
+      localStorage.setItem('sistema_esquadrias_os', JSON.stringify(bancoOS));
 
       alert("🎉 Visita/OS Cadastrada com Sucesso!");
       document.getElementById('cad-cliente').value = '';
@@ -258,116 +236,106 @@
       document.getElementById('cad-endereco').value = '';
       document.getElementById('cad-largura').value = '';
       document.getElementById('cad-altura').value = '';
-      carregarDados();
+      renderizarTelas();
     }
 
-    async function atualizarStatusFabrica(id, novoStatus) {
-      const client = getSupabase();
-      if (client) {
-        const { error } = await client.from('ordem_servico')
-          .update({ status: novoStatus })
-          .eq('id', id);
-
-        if (error) alert("Erro ao atualizar: " + error.message);
-        else carregarDados();
+    function atualizarStatus(id, novoStatus) {
+      const os = bancoOS.find(o => o.id === id);
+      if (os) {
+        os.status = novoStatus;
+        localStorage.setItem('sistema_esquadrias_os', JSON.stringify(bancoOS));
+        renderizarTelas();
       }
     }
 
-    async function doCheckin(id) {
+    function doCheckin(id) {
       const hora = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      const client = getSupabase();
-      if (client) {
-        const { error } = await client.from('ordem_servico')
-          .update({ status: 'Progress', checkin_time: `${hora} (${usuarioAtual.nome})` })
-          .eq('id', id);
-
-        if (error) alert("Erro no check-in: " + error.message);
-        else { alert("📍 Check-in efetuado!"); carregarDados(); }
+      const os = bancoOS.find(o => o.id === id);
+      if (os) {
+        os.status = 'Progress';
+        os.checkin_time = `${hora} (${usuarioAtual.nome})`;
+        localStorage.setItem('sistema_esquadrias_os', JSON.stringify(bancoOS));
+        alert("📍 Check-in efetuado com sucesso!");
+        renderizarTelas();
       }
     }
 
-    function copyAddress(text) { navigator.clipboard.writeText(text); alert("📋 Endereço copiado!"); }
-    function openMaps(address) { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank'); }
-    function openWaze(address) { window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`, '_blank'); }
+    function copyAddress(text) { 
+      navigator.clipboard.writeText(text); 
+      alert("📋 Endereço copiado para a área de transferência!"); 
+    }
 
-    async function carregarDados() {
-      const client = getSupabase();
-      if (!client) return;
+    function openMaps(address) { 
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank'); 
+    }
 
-      try {
-        const { data: osList, error } = await client.from('ordem_servico').select('*').order('id', { ascending: false });
-        
-        if (error) {
-          console.error(error);
-          return;
-        }
+    function openWaze(address) { 
+      window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`, '_blank'); 
+    }
 
-        // Atualiza Contadores do Mini CRM
-        let cntPendente = 0, cntMedido = 0, cntFabrica = 0, cntConcluido = 0;
-        (osList || []).forEach(os => {
-          if (os.status === 'Pendente') cntPendente++;
-          else if (os.status === 'Progress') cntMedido++;
-          else if (os.status === 'Fabrica') cntFabrica++;
-          else if (os.status === 'Concluido') cntConcluido++;
-        });
+    function renderizarTelas() {
+      // Contadores
+      let cntPendente = 0, cntMedido = 0, cntFabrica = 0, cntConcluido = 0;
+      bancoOS.forEach(os => {
+        if (os.status === 'Pendente') cntPendente++;
+        else if (os.status === 'Progress') cntMedido++;
+        else if (os.status === 'Fabrica') cntFabrica++;
+        else if (os.status === 'Concluido') cntConcluido++;
+      });
 
-        document.getElementById('crm-cnt-pendente').innerText = cntPendente;
-        document.getElementById('crm-cnt-medido').innerText = cntMedido;
-        document.getElementById('crm-cnt-fabrica').innerText = cntFabrica;
-        document.getElementById('crm-cnt-concluido').innerText = cntConcluido;
+      document.getElementById('crm-cnt-pendente').innerText = cntPendente;
+      document.getElementById('crm-cnt-medido').innerText = cntMedido;
+      document.getElementById('crm-cnt-fabrica').innerText = cntFabrica;
+      document.getElementById('crm-cnt-concluido').innerText = cntConcluido;
 
-        // Atualiza Vista Mobile
-        let mobileHtml = '';
-        (osList || []).forEach(os => {
-          mobileHtml += `
-            <div class="card">
-              <div style="display:flex; justify-content:space-between;">
-                <strong>OS #${os.id} - ${os.cliente || 'Cliente'}</strong>
-                <span class="badge badge-${os.status}">${os.status}</span>
-              </div>
-              <div style="font-size:13px; color:#64748b; margin-top:4px;"><strong>Produto:</strong> ${os.produto || '-'}</div>
-              <div class="schedule-box">⏰ <strong>Horário:</strong> ${os.horario_agendado || 'A combinar'}</div>
-              <div class="address-box">📍 ${os.endereco || 'Endereço não informado'}</div>
-              <div class="btn-grid">
-                <button type="button" class="btn btn-outline" onclick="copyAddress('${os.endereco}')">📋 Copiar</button>
-                <button type="button" class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
-                <button type="button" class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
-              </div>
-              ${os.status === 'Pendente' 
-                ? `<button type="button" class="btn btn-action" onclick="doCheckin(${os.id})">📍 Check-in de Chegada</button>` 
-                : `<div style="margin-top:10px; color:#166534; font-weight:bold; font-size:13px;">✓ Check-in: ${os.checkin_time || 'Realizado'}</div>`
-              }
+      // Lista Mobile
+      let mobileHtml = '';
+      bancoOS.forEach(os => {
+        mobileHtml += `
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>OS #${os.id} - ${os.cliente}</strong>
+              <span class="badge badge-${os.status}">${os.status}</span>
             </div>
-          `;
-        });
-        document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white;">Nenhuma ordem registrada.</p>';
+            <div style="font-size:13px; color:#475569; margin-top:6px;"><strong>Produto:</strong> ${os.produto}</div>
+            <div class="schedule-box">⏰ <strong>Horário:</strong> ${os.horario_agendado}</div>
+            <div class="address-box">📍 ${os.endereco}</div>
+            <div class="btn-grid">
+              <button class="btn btn-outline" onclick="copyAddress('${os.endereco}')">📋 Copiar</button>
+              <button class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
+              <button class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
+            </div>
+            ${os.status === 'Pendente' 
+              ? `<button class="btn btn-action" onclick="doCheckin(${os.id})">📍 Check-in de Chegada</button>` 
+              : `<div style="margin-top:10px; color:#166534; font-weight:bold; font-size:13px;">✓ Check-in: ${os.checkin_time || 'Realizado'}</div>`
+            }
+          </div>
+        `;
+      });
+      document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white;">Nenhuma ordem registrada.</p>';
 
-        // Atualiza Vista Notebook (Pipeline)
-        let desktopHtml = '';
-        (osList || []).forEach(os => {
-          desktopHtml += `
-            <tr>
-              <td>#${os.id}</td>
-              <td>${os.cliente || '-'}</td>
-              <td>${os.produto || '-'}</td>
-              <td><strong>${os.horario_agendado || '-'}</strong></td>
-              <td><span class="badge badge-${os.status}">${os.status}</span></td>
-              <td>
-                <select onchange="atualizarStatusFabrica(${os.id}, this.value)" style="margin:0; padding:4px;">
-                  <option value="Pendente" ${os.status==='Pendente'?'selected':''}>1. Agendado</option>
-                  <option value="Progress" ${os.status==='Progress'?'selected':''}>2. Medição Realizada</option>
-                  <option value="Fabrica" ${os.status==='Fabrica'?'selected':''}>3. Em Fabricação</option>
-                  <option value="Concluido" ${os.status==='Concluido'?'selected':''}>4. Pronto/Instalado</option>
-                </select>
-              </td>
-            </tr>
-          `;
-        });
-        document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum dado cadastrado.</td></tr>';
-
-      } catch(err) {
-        console.error("Erro ao carregar dados:", err);
-      }
+      // Lista Notebook
+      let desktopHtml = '';
+      bancoOS.forEach(os => {
+        desktopHtml += `
+          <tr>
+            <td>#${os.id}</td>
+            <td>${os.cliente}</td>
+            <td>${os.produto}</td>
+            <td><strong>${os.horario_agendado}</strong></td>
+            <td><span class="badge badge-${os.status}">${os.status}</span></td>
+            <td>
+              <select onchange="atualizarStatus(${os.id}, this.value)" style="margin:0; padding:4px;">
+                <option value="Pendente" ${os.status==='Pendente'?'selected':''}>1. Agendado</option>
+                <option value="Progress" ${os.status==='Progress'?'selected':''}>2. Medição Realizada</option>
+                <option value="Fabrica" ${os.status==='Fabrica'?'selected':''}>3. Em Fabricação</option>
+                <option value="Concluido" ${os.status==='Concluido'?'selected':''}>4. Pronto/Instalado</option>
+              </select>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum dado cadastrado.</td></tr>';
     }
   </script>
 </body>
