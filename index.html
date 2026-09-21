@@ -39,12 +39,16 @@
     .btn-maps { background: #ea4335; color: white; flex: 1; }
     .btn-waze { background: #33ccff; color: black; flex: 1; }
     .btn-action { background: var(--success); color: white; width: 100%; padding: 12px; font-size: 14px; margin-top: 8px; }
+    .btn-add { background: #64748b; color: white; padding: 6px 12px; margin-bottom: 10px; }
     
-    input, select, textarea { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+    input, select, textarea { width: 100%; padding: 10px; margin: 4px 0 10px 0; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
     th { background: #f8fafc; color: #64748b; }
     .header-user { background: #1e293b; color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    
+    .modal-medicao { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-top: 10px; }
+    .item-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px; }
   </style>
 </head>
 <body>
@@ -56,7 +60,7 @@
       <h2 style="margin-bottom: 16px; text-align: center; color: #1e293b;">Acesso ao CRM Esquadrias</h2>
       
       <label><b>Nome do Colaborador</b></label>
-      <input type="text" id="login-nome" placeholder="Ex: Eduarda" />
+      <input type="text" id="login-nome" placeholder="Ex: Eduarda" value="Eduarda" />
       
       <label><b>CPF / Identificação</b></label>
       <input type="text" id="login-cpf" placeholder="Ex: 12345678900" />
@@ -117,8 +121,9 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
           <div>
-            <label>Tipo de Item</label>
+            <label>Tipo Principal</label>
             <select id="cad-tipo">
+              <option value="Medição Geral / Múltiplos Itens">Múltiplos Itens / Geral</option>
               <option value="Janela">Janela</option>
               <option value="Porta">Porta</option>
               <option value="Portão">Portão</option>
@@ -127,11 +132,11 @@
             </select>
           </div>
           <div>
-            <label>Largura Inicial (mm)</label>
+            <label>Largura Estimada (mm)</label>
             <input type="text" id="cad-largura" placeholder="Ex: 1500" />
           </div>
           <div>
-            <label>Altura Inicial (mm)</label>
+            <label>Altura Estimada (mm)</label>
             <input type="text" id="cad-altura" placeholder="Ex: 2100" />
           </div>
         </div>
@@ -150,7 +155,7 @@
             <tr>
               <th>OS</th>
               <th>Cliente / Endereço</th>
-              <th>Especificação / Medidas</th>
+              <th>Itens / Medidas Confirmadas</th>
               <th>Data e Horário</th>
               <th>Fase CRM</th>
               <th>Ação</th>
@@ -177,33 +182,28 @@
   <script>
     const SUPABASE_URL = "https://hiexglgdainiccqnfymi.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_r_VqKkPS78Nc0xB8jGMM5Q_ifAgz-xWfByo8YvA5f9-"; 
-    let supabase = null;
+    let db = null;
 
-    function getSupabase() {
-      if (!supabase && window.supabase) {
-        try { supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){}
+    function getDb() {
+      if (!db && window.supabase && window.supabase.createClient) {
+        try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){}
       }
-      return supabase;
+      return db;
     }
 
-    let usuarioAtual = null;
-
     function fazerLogin() {
-      const nome = document.getElementById('login-nome').value.trim();
-      const cpf = document.getElementById('login-cpf').value.trim();
+      const nomeInput = document.getElementById('login-nome');
+      const nome = (nomeInput && nomeInput.value.trim()) ? nomeInput.value.trim() : "Usuário";
       const perfil = document.getElementById('login-perfil').value;
 
-      if (!nome) { alert("Informe o Nome!"); return; }
-
-      usuarioAtual = { nome, cpf, perfil };
       document.getElementById('screen-login').style.display = 'none';
 
       if (perfil === 'gestor') {
         document.getElementById('screen-manager').style.display = 'block';
-        document.getElementById('gestor-boas-vindas').innerText = `💻 Gestor: ${nome}`;
+        document.getElementById('gestor-boas-vindas').innerText = "💻 Gestor: " + nome;
       } else {
         document.getElementById('screen-mobile').style.display = 'block';
-        document.getElementById('campo-boas-vindas').innerText = `👷‍♂️ Medidor/Instalador: ${nome}`;
+        document.getElementById('campo-boas-vindas').innerText = "👷‍♂️ Campo: " + nome;
       }
 
       carregarDados();
@@ -214,8 +214,8 @@
     function formatarDataHora(dataRaw, horaRaw) {
       if (!dataRaw) return horaRaw || 'A combinar';
       const partes = dataRaw.split('-');
-      const dataFmt = `${partes[2]}/${partes[1]}/${partes[0]}`;
-      return horaRaw ? `${dataFmt} às ${horaRaw}` : dataFmt;
+      const dataFmt = partes[2] + "/" + partes[1] + "/" + partes[0];
+      return horaRaw ? dataFmt + " às " + horaRaw : dataFmt;
     }
 
     async function cadastrarOS() {
@@ -230,8 +230,8 @@
       if (!cliente || !endereco) { alert("Preencha Cliente e Endereço!"); return; }
 
       const dataHoraFormatada = formatarDataHora(dataVisita, horaVisita);
-      const produtoDesc = `${tipo} (${largura||'0'}mm x ${altura||'0'}mm)`;
-      const client = getSupabase();
+      const produtoDesc = tipo + (largura && altura ? " (" + largura + "mm x " + altura + "mm)" : "");
+      const client = getDb();
 
       if (client) {
         await client.from('ordem_servico').insert([{ cliente, horario_agendado: dataHoraFormatada, endereco, produto: produtoDesc, status: 'Pendente' }]);
@@ -246,30 +246,74 @@
     }
 
     async function atualizarStatus(id, novoStatus) {
-      const client = getSupabase();
+      const client = getDb();
       if (client) {
         await client.from('ordem_servico').update({ status: novoStatus }).eq('id', id);
         carregarDados();
       }
     }
 
-    async function salvarMedicaoFinal(id) {
-      const med = prompt("Digite as medidas finais confirmadas na obra (Ex: 1520mm x 2110mm - Alumínio Preto):");
-      if (med) {
-        const client = getSupabase();
-        if (client) {
-          await client.from('ordem_servico').update({ produto: med, status: 'Progress' }).eq('id', id);
-          alert("✅ Medição gravada no CRM!");
-          carregarDados();
-        }
+    function abrirFormMedicao(id) {
+      const formDiv = document.getElementById('form-medicao-' + id);
+      if (formDiv) {
+        formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none';
       }
     }
 
-    function openMaps(address) { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank'); }
-    function openWaze(address) { window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`, '_blank'); }
+    function adicionarLinhaItem(id) {
+      const container = document.getElementById('itens-container-' + id);
+      const div = document.createElement('div');
+      div.className = 'item-row';
+      div.innerHTML = `
+        <select class="med-tipo">
+          <option value="Janela">Janela</option>
+          <option value="Porta">Porta</option>
+          <option value="Portão">Portão</option>
+          <option value="Sacada">Sacada</option>
+          <option value="Grade">Grade</option>
+        </select>
+        <input type="text" class="med-largura" placeholder="Larg (mm)" />
+        <input type="text" class="med-altura" placeholder="Alt (mm)" />
+      `;
+      container.appendChild(div);
+    }
+
+    async function salvarMultiplasMedicoes(id) {
+      const container = document.getElementById('itens-container-' + id);
+      const rows = container.getElementsByClassName('item-row');
+      let resumoMedicao = [];
+
+      for (let r of rows) {
+        const tipo = r.querySelector('.med-tipo').value;
+        const larg = r.querySelector('.med-largura').value.trim();
+        const alt = r.querySelector('.med-altura').value.trim();
+        if (larg && alt) {
+          resumoMedicao.push(`${tipo}: ${larg}mm x ${alt}mm`);
+        }
+      }
+
+      const obsExtra = document.getElementById('obs-' + id).value.trim();
+      let textoFinal = resumoMedicao.join(" | ");
+      if (obsExtra) textoFinal += ` (Obs: ${obsExtra})`;
+
+      if (!textoFinal) {
+        alert("Preencha ao menos a largura e altura de 1 item!");
+        return;
+      }
+
+      const client = getDb();
+      if (client) {
+        await client.from('ordem_servico').update({ produto: textoFinal, status: 'Progress' }).eq('id', id);
+        alert("✅ Medições gravadas com sucesso no CRM!");
+        carregarDados();
+      }
+    }
+
+    function openMaps(address) { window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address), '_blank'); }
+    function openWaze(address) { window.open("https://waze.com/ul?q=" + encodeURIComponent(address) + "&navigate=yes", '_blank'); }
 
     async function carregarDados() {
-      const client = getSupabase();
+      const client = getDb();
       if (!client) return;
 
       const { data: osList } = await client.from('ordem_servico').select('*').order('id', { ascending: false });
@@ -288,48 +332,59 @@
       document.getElementById('crm-cnt-fabrica').innerText = cF;
       document.getElementById('crm-cnt-concluido').innerText = cC;
 
-      // Render Mobile / Medição
+      // Render Mobile
       let mobileHtml = '';
       lista.forEach(os => {
-        mobileHtml += `
-          <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong>OS #${os.id} - ${os.cliente}</strong>
-              <span class="badge badge-${os.status}">${os.status}</span>
-            </div>
-            <div style="font-size:13px; margin-top:6px;"><b>Item:</b> ${os.produto}</div>
-            <div class="schedule-box">📅 <b>Agendamento:</b> ${os.horario_agendado || 'A combinar'}</div>
-            <div class="address-box">📍 ${os.endereco}</div>
-            <div class="btn-grid">
-              <button class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
-              <button class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
-            </div>
-            <button class="btn btn-action" onclick="salvarMedicaoFinal(${os.id})">📐 Registrar Medição Fim da Obra</button>
-          </div>
-        `;
+        mobileHtml += '<div class="card">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<strong>OS #' + os.id + ' - ' + os.cliente + '</strong>' +
+            '<span class="badge badge-' + os.status + '">' + os.status + '</span>' +
+          '</div>' +
+          '<div style="font-size:13px; margin-top:6px;"><b>Itens / Especificação:</b> ' + os.produto + '</div>' +
+          '<div class="schedule-box">📅 <b>Agendamento:</b> ' + (os.horario_agendado || 'A combinar') + '</div>' +
+          '<div class="address-box">📍 ' + os.endereco + '</div>' +
+          '<div class="btn-grid">' +
+            '<button class="btn btn-maps" onclick="openMaps(\'' + os.endereco + '\')">🗺️ Maps</button>' +
+            '<button class="btn btn-waze" onclick="openWaze(\'' + os.endereco + '\')">🚗 Waze</button>' +
+          '</div>' +
+          '<button class="btn btn-action" onclick="abrirFormMedicao(' + os.id + ')">📐 Registrar / Adicionar Medições</button>' +
+          
+          '<div id="form-medicao-' + os.id + '" class="modal-medicao" style="display:none;">' +
+            '<h4 style="margin-bottom:8px;">Itens da Obra:</h4>' +
+            '<div id="itens-container-' + os.id + '">' +
+              '<div class="item-row">' +
+                '<select class="med-tipo"><option value="Janela">Janela</option><option value="Porta">Porta</option><option value="Portão">Portão</option><option value="Sacada">Sacada</option></select>' +
+                '<input type="text" class="med-largura" placeholder="Larg (mm)" />' +
+                '<input type="text" class="med-altura" placeholder="Alt (mm)" />' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn btn-add" onclick="adicionarLinhaItem(' + os.id + ')">➕ Adicionar Outro Item</button>' +
+            '<input type="text" id="obs-' + os.id + '" placeholder="Observações (Cor, Linha, Alumínio...)" />' +
+            '<button class="btn btn-action" onclick="salvarMultiplasMedicoes(' + os.id + ')">💾 Salvar Medições no CRM</button>' +
+          '</div>' +
+
+        '</div>';
       });
       document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white;">Nenhuma visita encontrada.</p>';
 
-      // Render Gestor / CRM
+      // Render Gestor
       let desktopHtml = '';
       lista.forEach(os => {
-        desktopHtml += `
-          <tr>
-            <td>#${os.id}</td>
-            <td><b>${os.cliente}</b><br><small style="color:#64748b;">${os.endereco}</small></td>
-            <td>${os.produto}</td>
-            <td>📅 ${os.horario_agendado || '-'}</td>
-            <td><span class="badge badge-${os.status}">${os.status}</span></td>
-            <td>
-              <select onchange="atualizarStatus(${os.id}, this.value)" style="margin:0; padding:4px;">
-                <option value="Pendente" ${os.status==='Pendente'?'selected':''}>1. Agendado</option>
-                <option value="Progress" ${os.status==='Progress'?'selected':''}>2. Medição Realizada</option>
-                <option value="Fabrica" ${os.status==='Fabrica'?'selected':''}>3. Em Fabricação</option>
-                <option value="Concluido" ${os.status==='Concluido'?'selected':''}>4. Concluído</option>
-              </select>
-            </td>
-          </tr>
-        `;
+        desktopHtml += '<tr>' +
+          '<td>#' + os.id + '</td>' +
+          '<td><b>' + os.cliente + '</b><br><small style="color:#64748b;">' + os.endereco + '</small></td>' +
+          '<td>' + os.produto + '</td>' +
+          '<td>📅 ' + (os.horario_agendado || '-') + '</td>' +
+          '<td><span class="badge badge-' + os.status + '">' + os.status + '</span></td>' +
+          '<td>' +
+            '<select onchange="atualizarStatus(' + os.id + ', this.value)" style="margin:0; padding:4px;">' +
+              '<option value="Pendente" ' + (os.status==='Pendente'?'selected':'') + '>1. Agendado</option>' +
+              '<option value="Progress" ' + (os.status==='Progress'?'selected':'') + '>2. Medição Realizada</option>' +
+              '<option value="Fabrica" ' + (os.status==='Fabrica'?'selected':'') + '>3. Em Fabricação</option>' +
+              '<option value="Concluido" ' + (os.status==='Concluido'?'selected':'') + '>4. Concluído</option>' +
+            '</select>' +
+          '</td>' +
+        '</tr>';
       });
       document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum registro no CRM.</td></tr>';
     }
