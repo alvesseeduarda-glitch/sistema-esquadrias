@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de OS - Esquadrias</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg-dark: #0f172a;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --warning: #d97706;
+      --purple: #7c3aed;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg-dark); color: #1e293b; padding: 12px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    
+    .container { width: 100%; max-width: 950px; }
+    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; }
+    .badge-Pendente { background: #fef3c7; color: #92400e; }
+    .badge-Progress { background: #dbeafe; color: #1e40af; }
+    .badge-Fabrica { background: #f3e8ff; color: #6b21a8; }
+    .badge-Concluido { background: #dcfce7; color: #166534; }
+
+    /* DASHBOARD MINI CRM */
+    .crm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .crm-card { background: white; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid var(--border); }
+    .crm-card .num { font-size: 22px; font-weight: bold; margin-top: 4px; }
+    .crm-pendente { border-top: 4px solid #d97706; color: #d97706; }
+    .crm-medicao { border-top: 4px solid #2563eb; color: #2563eb; }
+    .crm-fabrica { border-top: 4px solid #7c3aed; color: #7c3aed; }
+    .crm-pronto { border-top: 4px solid #16a34a; color: #16a34a; }
+
+    .schedule-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px; color: #1e40af; }
+    .address-box { background: #f1f5f9; padding: 8px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+
+    .btn-grid { display: flex; gap: 6px; margin-top: 8px; }
+    .btn { padding: 10px 14px; border-radius: 6px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; text-align: center; }
+    .btn-primary { background: var(--primary); color: white; width: 100%; }
+    .btn-outline { background: white; border: 1px solid var(--border); }
+    .btn-maps { background: #ea4335; color: white; }
+    .btn-waze { background: #33ccff; color: black; }
+    .btn-action { background: var(--success); color: white; width: 100%; padding: 12px; font-size: 14px; margin-top: 8px; }
+
+    input, select { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { background: #f8fafc; color: #64748b; }
+    
+    .header-user { background: #1e293b; color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- TELA DE LOGIN -->
+    <div id="screen-login" class="card" style="max-width: 400px; margin: 40px auto;">
+      <h2 style="margin-bottom: 12px; text-align: center;">Acesso ao Sistema</h2>
+      <label>Nome do Colaborador</label>
+      <input type="text" id="login-nome" placeholder="Ex: Carlos Silva" />
+      
+      <label>CPF</label>
+      <input type="text" id="login-cpf" placeholder="Ex: 12345678900" />
+      
+      <label>Perfil de Acesso</label>
+      <select id="login-perfil">
+        <option value="gestor">💻 Gestor / Produção (Notebook)</option>
+        <option value="instalador">👷‍♂️ Campo: Medidor / Instalador (Celular)</option>
+      </select>
+
+      <button type="button" class="btn btn-primary" onclick="fazerLogin()">Entrar no Sistema</button>
+    </div>
+
+    <!-- TELA DO GESTOR E FÁBRICA (NOTEBOOK) -->
+    <div id="screen-manager" style="display: none;">
+      <div class="header-user">
+        <span id="gestor-boas-vindas">💻 Painel de Gestão & Produção</span>
+        <button class="btn btn-outline" style="padding: 4px 8px;" onclick="logout()">Sair</button>
+      </div>
+
+      <!-- DASHBOARD MINI CRM -->
+      <div class="crm-grid">
+        <div class="crm-card crm-pendente">
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">1. Agendados</div>
+          <div class="num" id="crm-cnt-pendente">0</div>
+        </div>
+        <div class="crm-card crm-medicao">
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">2. Medidos</div>
+          <div class="num" id="crm-cnt-medido">0</div>
+        </div>
+        <div class="crm-card crm-fabrica">
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">3. Em Fabricação</div>
+          <div class="num" id="crm-cnt-fabrica">0</div>
+        </div>
+        <div class="crm-card crm-pronto">
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">4. Concluídos</div>
+          <div class="num" id="crm-cnt-concluido">0</div>
+        </div>
+      </div>
+
+      <!-- FORMULÁRIO DE CADASTRO -->
+      <div class="card">
+        <h3>➕ Cadastrar Nova Ordem de Serviço</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+          <div>
+            <label>Nome do Cliente</label>
+            <input type="text" id="cad-cliente" placeholder="Ex: João Souza" />
+          </div>
+          <div>
+            <label>Horário da Visita / Atendimento</label>
+            <input type="text" id="cad-horario" placeholder="Ex: Hoje às 14:30" />
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+          <div>
+            <label>Tipo de Esquadria</label>
+            <select id="cad-tipo">
+              <option value="Janela">Janela</option>
+              <option value="Porta">Porta</option>
+              <option value="Portão">Portão</option>
+              <option value="Sacada/Fechamento">Sacada/Fechamento</option>
+              <option value="Fachada Glazing">Fachada Glazing</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+          <div>
+            <label>Largura (mm)</label>
+            <input type="text" id="cad-largura" placeholder="Ex: 1500" />
+          </div>
+          <div>
+            <label>Altura (mm)</label>
+            <input type="text" id="cad-altura" placeholder="Ex: 2100" />
+          </div>
+        </div>
+        
+        <label>Endereço Completo</label>
+        <input type="text" id="cad-endereco" placeholder="Rua, Número, Bairro, Cidade - UF" />
+
+        <button type="button" class="btn btn-action" onclick="cadastrarOS()">Salvar e Agendar Visita</button>
+      </div>
+
+      <!-- PIPELINE DE PRODUÇÃO / FÁBRICA -->
+      <div class="card">
+        <h3>🏭 Pipeline de Produção & Fábrica</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>OS</th>
+              <th>Cliente</th>
+              <th>Tipo / Medidas</th>
+              <th>Horário Visita</th>
+              <th>Status Fábrica / Instalação</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="os-list-desktop">
+            <tr><td colspan="6">Nenhum dado cadastrado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TELA DO CAMPO / CELULAR -->
+    <div id="screen-mobile" style="display: none;">
+      <div class="header-user">
+        <span id="campo-boas-vindas">📱 Minhas Visitas e Instalações</span>
+        <button class="btn btn-outline" style="padding: 4px 8px;" onclick="logout()">Sair</button>
+      </div>
+      <div id="os-list-mobile">Nenhuma ordem registrada.</div>
+    </div>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://hiexglgdainiccqnfymi.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_r_VqKkPS78Nc0xB8jGMM5Q_ifAgz-xWfByo8YvA5f9-"; 
+
+    let supabase = null;
+
+    function getSupabase() {
+      if (!supabase && window.supabase) {
+        try {
+          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch(e) {
+          console.error("Erro ao inicializar Supabase:", e);
+        }
+      }
+      return supabase;
+    }
+
+    let usuarioAtual = null;
+
+    function fazerLogin() {
+      const nome = document.getElementById('login-nome').value.trim();
+      const cpf = document.getElementById('login-cpf').value.trim();
+      const perfil = document.getElementById('login-perfil').value;
+
+      if (!nome || !cpf) {
+        alert("Por favor, preencha o Nome e o CPF!");
+        return;
+      }
+
+      usuarioAtual = { nome, cpf, perfil };
+
+      // Troca a tela imediatamente
+      document.getElementById('screen-login').style.display = 'none';
+
+      if (perfil === 'gestor') {
+        document.getElementById('screen-manager').style.display = 'block';
+        document.getElementById('gestor-boas-vindas').innerText = `💻 Gestor: ${nome}`;
+      } else {
+        document.getElementById('screen-mobile').style.display = 'block';
+        document.getElementById('campo-boas-vindas').innerText = `👷‍♂️ Olá, ${nome}`;
+      }
+
+      carregarDados();
+    }
+
+    function logout() { 
+      location.reload(); 
+    }
+
+    async function cadastrarOS() {
+      const cliente = document.getElementById('cad-cliente').value.trim();
+      const horario = document.getElementById('cad-horario').value.trim();
+      const tipo = document.getElementById('cad-tipo').value;
+      const largura = document.getElementById('cad-largura').value.trim();
+      const altura = document.getElementById('cad-altura').value.trim();
+      const endereco = document.getElementById('cad-endereco').value.trim();
+
+      if (!cliente || !endereco) { 
+        alert("Preencha os campos de Cliente e Endereço!"); 
+        return; 
+      }
+
+      const produtoDesc = `${tipo} (${largura || '0'}mm x ${altura || '0'}mm)`;
+      const client = getSupabase();
+
+      if (client) {
+        const { error } = await client.from('ordem_servico').insert([
+          { cliente, horario_agendado: horario, endereco, produto: produtoDesc, status: 'Pendente' }
+        ]);
+
+        if (error) { 
+          alert("Erro ao cadastrar OS: " + error.message); 
+          return;
+        }
+      }
+
+      alert("🎉 Visita/OS Cadastrada com Sucesso!");
+      document.getElementById('cad-cliente').value = '';
+      document.getElementById('cad-horario').value = '';
+      document.getElementById('cad-endereco').value = '';
+      document.getElementById('cad-largura').value = '';
+      document.getElementById('cad-altura').value = '';
+      carregarDados();
+    }
+
+    async function atualizarStatusFabrica(id, novoStatus) {
+      const client = getSupabase();
+      if (client) {
+        const { error } = await client.from('ordem_servico')
+          .update({ status: novoStatus })
+          .eq('id', id);
+
+        if (error) alert("Erro ao atualizar: " + error.message);
+        else carregarDados();
+      }
+    }
+
+    async function doCheckin(id) {
+      const hora = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const client = getSupabase();
+      if (client) {
+        const { error } = await client.from('ordem_servico')
+          .update({ status: 'Progress', checkin_time: `${hora} (${usuarioAtual.nome})` })
+          .eq('id', id);
+
+        if (error) alert("Erro no check-in: " + error.message);
+        else { alert("📍 Check-in efetuado!"); carregarDados(); }
+      }
+    }
+
+    function copyAddress(text) { navigator.clipboard.writeText(text); alert("📋 Endereço copiado!"); }
+    function openMaps(address) { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank'); }
+    function openWaze(address) { window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`, '_blank'); }
+
+    async function carregarDados() {
+      const client = getSupabase();
+      if (!client) return;
+
+      try {
+        const { data: osList, error } = await client.from('ordem_servico').select('*').order('id', { ascending: false });
+        
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        // Atualiza Contadores do Mini CRM
+        let cntPendente = 0, cntMedido = 0, cntFabrica = 0, cntConcluido = 0;
+        (osList || []).forEach(os => {
+          if (os.status === 'Pendente') cntPendente++;
+          else if (os.status === 'Progress') cntMedido++;
+          else if (os.status === 'Fabrica') cntFabrica++;
+          else if (os.status === 'Concluido') cntConcluido++;
+        });
+
+        document.getElementById('crm-cnt-pendente').innerText = cntPendente;
+        document.getElementById('crm-cnt-medido').innerText = cntMedido;
+        document.getElementById('crm-cnt-fabrica').innerText = cntFabrica;
+        document.getElementById('crm-cnt-concluido').innerText = cntConcluido;
+
+        // Atualiza Vista Mobile
+        let mobileHtml = '';
+        (osList || []).forEach(os => {
+          mobileHtml += `
+            <div class="card">
+              <div style="display:flex; justify-content:space-between;">
+                <strong>OS #${os.id} - ${os.cliente || 'Cliente'}</strong>
+                <span class="badge badge-${os.status}">${os.status}</span>
+              </div>
+              <div style="font-size:13px; color:#64748b; margin-top:4px;"><strong>Produto:</strong> ${os.produto || '-'}</div>
+              <div class="schedule-box">⏰ <strong>Horário:</strong> ${os.horario_agendado || 'A combinar'}</div>
+              <div class="address-box">📍 ${os.endereco || 'Endereço não informado'}</div>
+              <div class="btn-grid">
+                <button type="button" class="btn btn-outline" onclick="copyAddress('${os.endereco}')">📋 Copiar</button>
+                <button type="button" class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
+                <button type="button" class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
+              </div>
+              ${os.status === 'Pendente' 
+                ? `<button type="button" class="btn btn-action" onclick="doCheckin(${os.id})">📍 Check-in de Chegada</button>` 
+                : `<div style="margin-top:10px; color:#166534; font-weight:bold; font-size:13px;">✓ Check-in: ${os.checkin_time || 'Realizado'}</div>`
+              }
+            </div>
+          `;
+        });
+        document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white;">Nenhuma ordem registrada.</p>';
+
+        // Atualiza Vista Notebook (Pipeline)
+        let desktopHtml = '';
+        (osList || []).forEach(os => {
+          desktopHtml += `
+            <tr>
+              <td>#${os.id}</td>
+              <td>${os.cliente || '-'}</td>
+              <td>${os.produto || '-'}</td>
+              <td><strong>${os.horario_agendado || '-'}</strong></td>
+              <td><span class="badge badge-${os.status}">${os.status}</span></td>
+              <td>
+                <select onchange="atualizarStatusFabrica(${os.id}, this.value)" style="margin:0; padding:4px;">
+                  <option value="Pendente" ${os.status==='Pendente'?'selected':''}>1. Agendado</option>
+                  <option value="Progress" ${os.status==='Progress'?'selected':''}>2. Medição Realizada</option>
+                  <option value="Fabrica" ${os.status==='Fabrica'?'selected':''}>3. Em Fabricação</option>
+                  <option value="Concluido" ${os.status==='Concluido'?'selected':''}>4. Pronto/Instalado</option>
+                </select>
+              </td>
+            </tr>
+          `;
+        });
+        document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum dado cadastrado.</td></tr>';
+
+      } catch(err) {
+        console.error("Erro ao carregar dados:", err);
+      }
+    }
+  </script>
+</body>
+</html>
