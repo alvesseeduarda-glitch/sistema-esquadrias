@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sistema CRM - Esquadrias</title>
+  <title>Sistema CRM & Produção - Esquadrias</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --primary: #2563eb;
@@ -14,7 +15,7 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background: var(--bg-dark); color: #1e293b; padding: 12px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-    .container { width: 100%; max-width: 1050px; }
+    .container { width: 100%; max-width: 1100px; }
     .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; }
     .badge-Pendente { background: #fef3c7; color: #92400e; }
@@ -49,6 +50,12 @@
     
     .modal-medicao { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-top: 10px; }
     .item-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+
+    /* Estilos do Quadro Kanban */
+    .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 10px; overflow-x: auto; }
+    .kanban-col { background: #f1f5f9; border-radius: 8px; padding: 10px; min-height: 250px; }
+    .kanban-col h4 { font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--border); text-transform: uppercase; color: #475569; }
+    .kanban-card { background: white; border-radius: 6px; padding: 10px; margin-bottom: 8px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
   </style>
 </head>
 <body>
@@ -67,39 +74,47 @@
       
       <label><b>Perfil de Acesso</b></label>
       <select id="login-perfil">
-        <option value="gestor">💻 Gestor / Vendas (CRM Completo)</option>
+        <option value="gestor">💻 Gestor / Vendas (CRM & Gráficos)</option>
         <option value="medidor">📏 Campo: Medidor (Celular)</option>
-        <option value="fabrica">🏭 Fábrica / Produção</option>
-        <option value="instalador">👷‍♂️ Campo: Instalador (Celular)</option>
+        <option value="fabrica">🏭 Fábrica / Produção (Kanban)</option>
+        <option value="instalador">👷‍♂️ Campo: Instalador (Check-in / Fotos)</option>
       </select>
 
       <button type="button" class="btn btn-primary" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
     </div>
 
-    <!-- TELA DO GESTOR (NOTEBOOK / CRM) -->
+    <!-- TELA DO GESTOR (CRM + GRÁFICOS) -->
     <div id="screen-manager" style="display: none;">
       <div class="header-user">
         <span id="gestor-boas-vindas">💻 Gestão & CRM</span>
         <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
       </div>
 
-      <!-- DASHBOARD CRM -->
+      <!-- METRICAS -->
       <div class="crm-grid">
         <div class="crm-card crm-pendente">
-          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">1. Visita Agendada</div>
+          <div style="font-size: 11px; font-weight: bold;">1. VISITA AGENDADA</div>
           <div class="num" id="crm-cnt-pendente">0</div>
         </div>
         <div class="crm-card crm-medicao">
-          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">2. Medição Realizada</div>
+          <div style="font-size: 11px; font-weight: bold;">2. MEDIÇÃO REALIZADA</div>
           <div class="num" id="crm-cnt-medido">0</div>
         </div>
         <div class="crm-card crm-fabrica">
-          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">3. Em Fabricação</div>
+          <div style="font-size: 11px; font-weight: bold;">3. EM FABRICAÇÃO</div>
           <div class="num" id="crm-cnt-fabrica">0</div>
         </div>
         <div class="crm-card crm-pronto">
-          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">4. Instalado / Concluído</div>
+          <div style="font-size: 11px; font-weight: bold;">4. CONCLUÍDO</div>
           <div class="num" id="crm-cnt-concluido">0</div>
+        </div>
+      </div>
+
+      <!-- GRÁFICO COMPARATIVO MÊS A MÊS -->
+      <div class="card">
+        <h3>📈 Desempenho do CRM - Comparativo Mês a Mês</h3>
+        <div style="max-height: 220px; position: relative; margin-top: 10px;">
+          <canvas id="crmChart"></canvas>
         </div>
       </div>
 
@@ -131,7 +146,6 @@
                 <option value="Porta">Porta</option>
                 <option value="Portão">Portão</option>
                 <option value="Sacada">Sacada/Fechamento</option>
-                <option value="Fachada Glazing">Fachada Glazing</option>
               </select>
             </div>
             <div>
@@ -151,10 +165,10 @@
         </form>
       </div>
 
-      <!-- PIPELINE CRM DE PRODUÇÃO -->
+      <!-- TABELA CRM DE GESTÃO -->
       <div class="card">
         <h3>📊 Funil de Vendas e Produção (CRM)</h3>
-        <table style="width:100%;">
+        <table>
           <thead>
             <tr>
               <th>OS</th>
@@ -172,13 +186,52 @@
       </div>
     </div>
 
-    <!-- TELA DO CAMPO / CELULAR (MEDIÇÃO E INSTALAÇÃO) -->
-    <div id="screen-mobile" style="display: none;">
+    <!-- TELA FÁBRICA (QUADRO KANBAN) -->
+    <div id="screen-fabrica" style="display: none;">
       <div class="header-user">
-        <span id="campo-boas-vindas">📱 Medições e Serviços</span>
+        <span id="fabrica-boas-vindas">🏭 Fábrica / Produção</span>
         <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
       </div>
-      <div id="os-list-mobile">Carregando dados...</div>
+
+      <div class="card">
+        <h3>📋 Quadro Kanban de Produção</h3>
+        <div class="kanban-board">
+          <div class="kanban-col">
+            <h4 style="color:#d97706;">1. Agendado</h4>
+            <div id="kanban-pendente"></div>
+          </div>
+          <div class="kanban-col">
+            <h4 style="color:#2563eb;">2. Medido</h4>
+            <div id="kanban-progress"></div>
+          </div>
+          <div class="kanban-col">
+            <h4 style="color:#7c3aed;">3. Em Fabricação</h4>
+            <div id="kanban-fabrica"></div>
+          </div>
+          <div class="kanban-col">
+            <h4 style="color:#16a34a;">4. Concluído</h4>
+            <div id="kanban-concluido"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA MEDIDOR (CAMPO CELULAR) -->
+    <div id="screen-medidor" style="display: none;">
+      <div class="header-user">
+        <span id="medidor-boas-vindas">📏 Medições de Campo</span>
+        <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
+      </div>
+      <div id="os-list-medidor">Carregando visitas...</div>
+    </div>
+
+    <!-- TELA INSTALADOR (CHECK-IN E CONCLUSÃO) -->
+    <div id="screen-instalador" style="display: none;">
+      <div class="header-user">
+        <span id="instalador-boas-vindas">👷‍♂️ Painel do Instalador</span>
+        <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
+      </div>
+      <div id="os-list-instalador">Carregando instalações...</div>
     </div>
 
   </div>
@@ -187,6 +240,7 @@
     const SUPABASE_URL = "https://hiexglgdainiccqnfymi.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_r_VqKkPS78Nc0xB8jGMM5Q_ifAgz-xWfByo8YvA5f9-"; 
     let db = null;
+    let chartInstance = null;
 
     function getDb() {
       if (!db && window.supabase && window.supabase.createClient) {
@@ -202,12 +256,19 @@
 
       document.getElementById('screen-login').style.display = 'none';
 
-      if (perfil === 'gestor' || perfil === 'fabrica') {
+      if (perfil === 'gestor') {
         document.getElementById('screen-manager').style.display = 'block';
-        document.getElementById('gestor-boas-vindas').innerText = (perfil === 'gestor' ? "💻 Gestor: " : "🏭 Fábrica: ") + nome;
-      } else {
-        document.getElementById('screen-mobile').style.display = 'block';
-        document.getElementById('campo-boas-vindas').innerText = (perfil === 'medidor' ? "📏 Medidor: " : "👷‍♂️ Instalador: ") + nome;
+        document.getElementById('gestor-boas-vindas').innerText = "💻 Gestor: " + nome;
+        renderGraficoCRM();
+      } else if (perfil === 'fabrica') {
+        document.getElementById('screen-fabrica').style.display = 'block';
+        document.getElementById('fabrica-boas-vindas').innerText = "🏭 Fábrica: " + nome;
+      } else if (perfil === 'medidor') {
+        document.getElementById('screen-medidor').style.display = 'block';
+        document.getElementById('medidor-boas-vindas').innerText = "📏 Medidor: " + nome;
+      } else if (perfil === 'instalador') {
+        document.getElementById('screen-instalador').style.display = 'block';
+        document.getElementById('instalador-boas-vindas').innerText = "👷‍♂️ Instalador: " + nome;
       }
 
       carregarDados();
@@ -223,7 +284,16 @@
     }
 
     function getLocalOS() {
-      return JSON.parse(localStorage.getItem('crm_os_data') || '[]');
+      const dados = localStorage.getItem('crm_os_data');
+      if (!dados) {
+        const amostra = [
+          { id: "5625", cliente: "João Souza", horario_agendado: "10/10/2026 às 14:30", endereco: "São José do Rio Preto", produto: "Janela: 1500mm x 1200mm", status: "Progress", checkin: false },
+          { id: "5626", cliente: "Maria Oliveira", horario_agendado: "12/10/2026 às 09:00", endereco: "Rua das Flores, 120", produto: "Porta Balcão (Aguardando Medição)", status: "Pendente", checkin: false }
+        ];
+        localStorage.setItem('crm_os_data', JSON.stringify(amostra));
+        return amostra;
+      }
+      return JSON.parse(dados);
     }
 
     function setLocalOS(data) {
@@ -248,28 +318,24 @@
 
       const novaOS = {
         id: Math.floor(1000 + Math.random() * 9000).toString(),
-        cliente: cliente,
+        cliente,
         horario_agendado: dataHoraFormatada,
-        endereco: endereco,
+        endereco,
         produto: produtoDesc,
-        status: 'Pendente'
+        status: 'Pendente',
+        checkin: false
       };
 
-      // Guarda localmente primeiro
       const listaLocal = getLocalOS();
       listaLocal.unshift(novaOS);
       setLocalOS(listaLocal);
 
-      // Tenta enviar para o Supabase sem bloquear
       const client = getDb();
       if (client) {
-        try { 
-          await client.from('ordem_servico').insert([{ cliente, horario_agendado: dataHoraFormatada, endereco, produto: produtoDesc, status: 'Pendente' }]); 
-        } catch(err){}
+        try { await client.from('ordem_servico').insert([{ cliente, horario_agendado: dataHoraFormatada, endereco, produto: produtoDesc, status: 'Pendente' }]); } catch(err){}
       }
 
-      alert("🎉 Pedido de " + cliente + " cadastrado com sucesso!");
-      
+      alert("🎉 Visita agendada com sucesso!");
       document.getElementById('cad-cliente').value = '';
       document.getElementById('cad-data').value = '';
       document.getElementById('cad-horario').value = '';
@@ -296,11 +362,34 @@
       carregarDados();
     }
 
+    function fazerCheckin(id) {
+      const listaLocal = getLocalOS();
+      const item = listaLocal.find(o => o.id == id);
+      if (item) {
+        item.checkin = true;
+        item.horarioCheckin = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLocalOS(listaLocal);
+        alert("📍 Check-in realizado às " + item.horarioCheckin + "!");
+        carregarDados();
+      }
+    }
+
+    function concluirInstalacao(id) {
+      const obs = document.getElementById('obs-inst-' + id).value.trim();
+      const listaLocal = getLocalOS();
+      const item = listaLocal.find(o => o.id == id);
+      if (item) {
+        item.status = 'Concluido';
+        if (obs) item.obsInstalacao = obs;
+        setLocalOS(listaLocal);
+        alert("🎉 Instalação marcada como Concluída!");
+        carregarDados();
+      }
+    }
+
     function abrirFormMedicao(id) {
       const formDiv = document.getElementById('form-medicao-' + id);
-      if (formDiv) {
-        formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none';
-      }
+      if (formDiv) formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none';
     }
 
     function adicionarLinhaItem(id) {
@@ -313,7 +402,6 @@
           <option value="Porta">Porta</option>
           <option value="Portão">Portão</option>
           <option value="Sacada">Sacada</option>
-          <option value="Grade">Grade</option>
         </select>
         <input type="text" class="med-largura" placeholder="Larg (mm)" />
         <input type="text" class="med-altura" placeholder="Alt (mm)" />
@@ -330,19 +418,14 @@
         const tipo = r.querySelector('.med-tipo').value;
         const larg = r.querySelector('.med-largura').value.trim();
         const alt = r.querySelector('.med-altura').value.trim();
-        if (larg && alt) {
-          resumoMedicao.push(tipo + ": " + larg + "mm x " + alt + "mm");
-        }
+        if (larg && alt) resumoMedicao.push(tipo + ": " + larg + "mm x " + alt + "mm");
       }
 
       const obsExtra = document.getElementById('obs-' + id).value.trim();
       let textoFinal = resumoMedicao.join(" | ");
       if (obsExtra) textoFinal += " (Obs: " + obsExtra + ")";
 
-      if (!textoFinal) {
-        alert("Preencha pelo menos a largura e altura de 1 item!");
-        return;
-      }
+      if (!textoFinal) { alert("Preencha ao menos largura e altura!"); return; }
 
       const listaLocal = getLocalOS();
       const item = listaLocal.find(o => o.id == id);
@@ -352,33 +435,39 @@
         setLocalOS(listaLocal);
       }
 
-      const client = getDb();
-      if (client) {
-        try { await client.from('ordem_servico').update({ produto: textoFinal, status: 'Progress' }).eq('id', id); } catch(e){}
-      }
-
-      alert("✅ Medições gravadas com sucesso no CRM!");
+      alert("✅ Medições salvas no sistema!");
       carregarDados();
     }
 
     function openMaps(address) { window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address), '_blank'); }
     function openWaze(address) { window.open("https://waze.com/ul?q=" + encodeURIComponent(address) + "&navigate=yes", '_blank'); }
 
+    function renderGraficoCRM() {
+      const ctx = document.getElementById('crmChart');
+      if (!ctx) return;
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Julho', 'Agosto', 'Setembro', 'Outubro'],
+          datasets: [
+            { label: 'Medições Realizadas', data: [12, 19, 15, 22], backgroundColor: '#2563eb' },
+            { label: 'Obras Concluídas', data: [8, 14, 12, 18], backgroundColor: '#16a34a' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
     async function carregarDados() {
       let lista = getLocalOS();
-      const client = getDb();
-
-      if (client) {
-        try {
-          const { data: osList } = await client.from('ordem_servico').select('*').order('id', { ascending: false });
-          if (osList && osList.length > 0) {
-            lista = osList;
-            setLocalOS(lista);
-          }
-        } catch(e) {}
-      }
-
       let cP = 0, cM = 0, cF = 0, cC = 0;
+
       lista.forEach(o => {
         if (o.status === 'Pendente') cP++;
         else if (o.status === 'Progress') cM++;
@@ -386,47 +475,14 @@
         else if (o.status === 'Concluido') cC++;
       });
 
-      document.getElementById('crm-cnt-pendente').innerText = cP;
-      document.getElementById('crm-cnt-medido').innerText = cM;
-      document.getElementById('crm-cnt-fabrica').innerText = cF;
-      document.getElementById('crm-cnt-concluido').innerText = cC;
+      if (document.getElementById('crm-cnt-pendente')) {
+        document.getElementById('crm-cnt-pendente').innerText = cP;
+        document.getElementById('crm-cnt-medido').innerText = cM;
+        document.getElementById('crm-cnt-fabrica').innerText = cF;
+        document.getElementById('crm-cnt-concluido').innerText = cC;
+      }
 
-      // Render Mobile
-      let mobileHtml = '';
-      lista.forEach(os => {
-        mobileHtml += '<div class="card">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong>OS #' + os.id + ' - ' + os.cliente + '</strong>' +
-            '<span class="badge badge-' + os.status + '">' + os.status + '</span>' +
-          '</div>' +
-          '<div style="font-size:13px; margin-top:6px;"><b>Itens / Especificação:</b> ' + os.produto + '</div>' +
-          '<div class="schedule-box">📅 <b>Agendamento:</b> ' + (os.horario_agendado || 'A combinar') + '</div>' +
-          '<div class="address-box">📍 ' + os.endereco + '</div>' +
-          '<div class="btn-grid">' +
-            '<button class="btn btn-maps" onclick="openMaps(\'' + os.endereco + '\')">🗺️ Maps</button>' +
-            '<button class="btn btn-waze" onclick="openWaze(\'' + os.endereco + '\')">🚗 Waze</button>' +
-          '</div>' +
-          '<button class="btn btn-action" onclick="abrirFormMedicao(' + os.id + ')">📐 Registrar / Adicionar Medições</button>' +
-          
-          '<div id="form-medicao-' + os.id + '" class="modal-medicao" style="display:none;">' +
-            '<h4 style="margin-bottom:8px;">Itens da Obra:</h4>' +
-            '<div id="itens-container-' + os.id + '">' +
-              '<div class="item-row">' +
-                '<select class="med-tipo"><option value="Janela">Janela</option><option value="Porta">Porta</option><option value="Portão">Portão</option><option value="Sacada">Sacada</option></select>' +
-                '<input type="text" class="med-largura" placeholder="Larg (mm)" />' +
-                '<input type="text" class="med-altura" placeholder="Alt (mm)" />' +
-              '</div>' +
-            '</div>' +
-            '<button class="btn btn-add" onclick="adicionarLinhaItem(' + os.id + ')">➕ Adicionar Outro Item</button>' +
-            '<input type="text" id="obs-' + os.id + '" placeholder="Observações (Cor, Linha, Alumínio...)" />' +
-            '<button class="btn btn-action" onclick="salvarMultiplasMedicoes(' + os.id + ')">💾 Salvar Medições no CRM</button>' +
-          '</div>' +
-
-        '</div>';
-      });
-      document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white; text-align:center;">Nenhum registo encontrado.</p>';
-
-      // Render Gestor
+      // RENDER GESTOR
       let desktopHtml = '';
       lista.forEach(os => {
         desktopHtml += '<tr>' +
@@ -445,7 +501,85 @@
           '</td>' +
         '</tr>';
       });
-      document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum registo no CRM.</td></tr>';
+      if (document.getElementById('os-list-desktop')) document.getElementById('os-list-desktop').innerHTML = desktopHtml;
+
+      // RENDER KANBAN FÁBRICA
+      const cols = { Pendente: '', Progress: '', Fabrica: '', Concluido: '' };
+      lista.forEach(os => {
+        const card = `
+          <div class="kanban-card">
+            <strong>OS #${os.id} - ${os.cliente}</strong>
+            <p style="font-size:12px; color:#475569; margin:4px 0;">${os.produto}</p>
+            <select onchange="atualizarStatus(${os.id}, this.value)" style="font-size:11px; padding:4px;">
+              <option value="Pendente" ${os.status==='Pendente'?'selected':''}>1. Agendado</option>
+              <option value="Progress" ${os.status==='Progress'?'selected':''}>2. Medição Realizada</option>
+              <option value="Fabrica" ${os.status==='Fabrica'?'selected':''}>3. Em Fabricação</option>
+              <option value="Concluido" ${os.status==='Concluido'?'selected':''}>4. Concluído</option>
+            </select>
+          </div>`;
+        if (cols[os.status] !== undefined) cols[os.status] += card;
+      });
+
+      if (document.getElementById('kanban-pendente')) {
+        document.getElementById('kanban-pendente').innerHTML = cols.Pendente || '<small>Vazio</small>';
+        document.getElementById('kanban-progress').innerHTML = cols.Progress || '<small>Vazio</small>';
+        document.getElementById('kanban-fabrica').innerHTML = cols.Fabrica || '<small>Vazio</small>';
+        document.getElementById('kanban-concluido').innerHTML = cols.Concluido || '<small>Vazio</small>';
+      }
+
+      // RENDER MEDIDOR
+      let medidorHtml = '';
+      lista.filter(o => o.status !== 'Concluido').forEach(os => {
+        medidorHtml += `<div class="card">
+          <strong>OS #${os.id} - ${os.cliente}</strong>
+          <div style="font-size:13px; margin-top:4px;">${os.produto}</div>
+          <div class="schedule-box">📅 ${os.horario_agendado}</div>
+          <div class="address-box">📍 ${os.endereco}</div>
+          <div class="btn-grid">
+            <button class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
+            <button class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
+          </div>
+          <button class="btn btn-action" onclick="abrirFormMedicao(${os.id})">📐 Inserir Medições</button>
+          <div id="form-medicao-${os.id}" class="modal-medicao" style="display:none;">
+            <div id="itens-container-${os.id}">
+              <div class="item-row">
+                <select class="med-tipo"><option value="Janela">Janela</option><option value="Porta">Porta</option></select>
+                <input type="text" class="med-largura" placeholder="Larg (mm)" />
+                <input type="text" class="med-altura" placeholder="Alt (mm)" />
+              </div>
+            </div>
+            <button class="btn btn-add" onclick="adicionarLinhaItem(${os.id})">➕ Outro Item</button>
+            <input type="text" id="obs-${os.id}" placeholder="Observações" />
+            <button class="btn btn-action" onclick="salvarMultiplasMedicoes(${os.id})">💾 Salvar Medições</button>
+          </div>
+        </div>`;
+      });
+      if (document.getElementById('os-list-medidor')) document.getElementById('os-list-medidor').innerHTML = medidorHtml || '<p style="color:white;">Nenhuma visita.</p>';
+
+      // RENDER INSTALADOR
+      let instaladorHtml = '';
+      lista.filter(o => o.status === 'Fabrica' || o.status === 'Progress' || o.status === 'Concluido').forEach(os => {
+        instaladorHtml += `<div class="card">
+          <div style="display:flex; justify-content:space-between;">
+            <strong>OS #${os.id} - ${os.cliente}</strong>
+            <span class="badge badge-${os.status}">${os.status}</span>
+          </div>
+          <div style="font-size:13px; margin-top:4px;"><b>Itens a Instalar:</b> ${os.produto}</div>
+          <div class="address-box">📍 ${os.endereco}</div>
+          <div class="btn-grid">
+            <button class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
+            <button class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
+          </div>
+          <br>
+          ${!os.checkin ? 
+            `<button class="btn btn-primary" onclick="fazerCheckin(${os.id})">📍 Realizar Check-in na Obra</button>` : 
+            `<div style="color:green; font-weight:bold; font-size:12px; margin-bottom:8px;">✅ Check-in efetuado às ${os.horarioCheckin}</div>`
+          }
+          <input type="text" id="obs-inst-${os.id}" placeholder="Observações da instalação (ex: silicone aplicado)" />
+          <button class="btn btn-action" onclick="concluirInstalacao(${os.id})">✅ Finalizar Instalação</button>
+        </div>`;
+      });
+      if (document.getElementById('os-list-instalador')) document.getElementById('os-list-instalador').innerHTML = instaladorHtml || '<p style="color:white;">Nenhuma instalação disponível.</p>';
     }
   </script>
 </body>
