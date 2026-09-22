@@ -4,8 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sistema CRM & Produção - Esquadrias</title>
+  <!-- Bibliotecas externas para Gráfico, PDF e Canvas de Assinatura -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
   <style>
     :root {
       --primary: #2563eb;
@@ -17,6 +21,7 @@
     body { background: var(--bg-dark); color: #1e293b; padding: 12px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     .container { width: 100%; max-width: 1100px; }
     .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; }
     .badge-Pendente { background: #fef3c7; color: #92400e; }
     .badge-Progress { background: #dbeafe; color: #1e40af; }
@@ -51,11 +56,15 @@
     .modal-medicao { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-top: 10px; }
     .item-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px; }
 
-    /* Estilos do Quadro Kanban */
-    .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 10px; overflow-x: auto; }
+    /* Kanban de Fabricacao */
+    .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; overflow-x: auto; }
     .kanban-col { background: #f1f5f9; border-radius: 8px; padding: 10px; min-height: 250px; }
-    .kanban-col h4 { font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--border); text-transform: uppercase; color: #475569; }
+    .kanban-col h4 { font-size: 12px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--border); text-transform: uppercase; color: #475569; }
     .kanban-card { background: white; border-radius: 6px; padding: 10px; margin-bottom: 8px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+    /* Canvas de Assinatura */
+    .signature-container { border: 2px dashed #94a3b8; border-radius: 8px; background: #fafafa; margin: 8px 0; text-align: center; position: relative; }
+    canvas#sig-canvas { width: 100%; height: 160px; touch-action: none; }
   </style>
 </head>
 <body>
@@ -70,20 +79,20 @@
       <input type="text" id="login-nome" placeholder="Ex: Eduarda" value="Eduarda" />
       
       <label><b>CPF / Identificação</b></label>
-      <input type="text" id="login-cpf" placeholder="Ex: 12345678900" />
+      <input type="text" id="login-cpf" placeholder="Ex: 123.456.789-00" value="123.456.789-00" />
       
       <label><b>Perfil de Acesso</b></label>
       <select id="login-perfil">
-        <option value="gestor">💻 Gestor / Vendas (CRM & Gráficos)</option>
+        <option value="gestor">💻 Gestor / Vendas (CRM Completo)</option>
         <option value="medidor">📏 Campo: Medidor (Celular)</option>
-        <option value="fabrica">🏭 Fábrica / Produção (Kanban)</option>
-        <option value="instalador">👷‍♂️ Campo: Instalador (Check-in / Fotos)</option>
+        <option value="fabrica">🏭 Fábrica / Produção (Chão de Fábrica)</option>
+        <option value="instalador">👷‍♂️ Campo: Instalador (Assinatura / PDF)</option>
       </select>
 
       <button type="button" class="btn btn-primary" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
     </div>
 
-    <!-- TELA DO GESTOR (CRM + GRÁFICOS) -->
+    <!-- TELA DO GESTOR -->
     <div id="screen-manager" style="display: none;">
       <div class="header-user">
         <span id="gestor-boas-vindas">💻 Gestão & CRM</span>
@@ -110,15 +119,15 @@
         </div>
       </div>
 
-      <!-- GRÁFICO COMPARATIVO MÊS A MÊS -->
+      <!-- GRÁFICO CRM REAL -->
       <div class="card">
-        <h3>📈 Desempenho do CRM - Comparativo Mês a Mês</h3>
-        <div style="max-height: 220px; position: relative; margin-top: 10px;">
+        <h3>📈 Desempenho do CRM - Realizado vs Concluído</h3>
+        <div style="max-height: 200px; position: relative; margin-top: 10px;">
           <canvas id="crmChart"></canvas>
         </div>
       </div>
 
-      <!-- FORMULÁRIO DE CADASTRO -->
+      <!-- CADASTRO -->
       <div class="card">
         <h3>➕ Novo Pedido / Agendamento de Medição</h3>
         <form onsubmit="cadastrarOS(event)">
@@ -165,7 +174,7 @@
         </form>
       </div>
 
-      <!-- TABELA CRM DE GESTÃO -->
+      <!-- TABELA CRM -->
       <div class="card">
         <h3>📊 Funil de Vendas e Produção (CRM)</h3>
         <table>
@@ -176,7 +185,7 @@
               <th>Itens / Medidas Confirmadas</th>
               <th>Data e Horário</th>
               <th>Fase CRM</th>
-              <th>Ação</th>
+              <th>Ações / PDF</th>
             </tr>
           </thead>
           <tbody id="os-list-desktop">
@@ -186,37 +195,39 @@
       </div>
     </div>
 
-    <!-- TELA FÁBRICA (QUADRO KANBAN) -->
+    <!-- TELA FÁBRICA (KANBAN DE CHÃO DE FÁBRICA) -->
     <div id="screen-fabrica" style="display: none;">
       <div class="header-user">
-        <span id="fabrica-boas-vindas">🏭 Fábrica / Produção</span>
+        <span id="fabrica-boas-vindas">🏭 Fábrica / Controle de Produção</span>
         <button class="btn btn-outline" style="padding: 6px 12px;" onclick="logout()">Sair</button>
       </div>
 
       <div class="card">
-        <h3>📋 Quadro Kanban de Produção</h3>
+        <h3>🛠️ Processo Interno de Fabricação</h3>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Acompanhe e movimente as peças pelas etapas do perfil e vidro:</p>
+        
         <div class="kanban-board">
           <div class="kanban-col">
-            <h4 style="color:#d97706;">1. Agendado</h4>
-            <div id="kanban-pendente"></div>
+            <h4 style="color:#d97706;">1. Corte de Perfis</h4>
+            <div id="kanban-fab-corte"></div>
           </div>
           <div class="kanban-col">
-            <h4 style="color:#2563eb;">2. Medido</h4>
-            <div id="kanban-progress"></div>
+            <h4 style="color:#2563eb;">2. Usinagem / Usinar</h4>
+            <div id="kanban-fab-usinagem"></div>
           </div>
           <div class="kanban-col">
-            <h4 style="color:#7c3aed;">3. Em Fabricação</h4>
-            <div id="kanban-fabrica"></div>
+            <h4 style="color:#7c3aed;">3. Montagem & Vidro</h4>
+            <div id="kanban-fab-montagem"></div>
           </div>
           <div class="kanban-col">
-            <h4 style="color:#16a34a;">4. Concluído</h4>
-            <div id="kanban-concluido"></div>
+            <h4 style="color:#16a34a;">4. Pronto p/ Instalação</h4>
+            <div id="kanban-fab-pronto"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- TELA MEDIDOR (CAMPO CELULAR) -->
+    <!-- TELA MEDIDOR -->
     <div id="screen-medidor" style="display: none;">
       <div class="header-user">
         <span id="medidor-boas-vindas">📏 Medições de Campo</span>
@@ -225,7 +236,7 @@
       <div id="os-list-medidor">Carregando visitas...</div>
     </div>
 
-    <!-- TELA INSTALADOR (CHECK-IN E CONCLUSÃO) -->
+    <!-- TELA INSTALADOR (ASSINATURA DIGITAL + PDF) -->
     <div id="screen-instalador" style="display: none;">
       <div class="header-user">
         <span id="instalador-boas-vindas">👷‍♂️ Painel do Instalador</span>
@@ -237,29 +248,22 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://hiexglgdainiccqnfymi.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_r_VqKkPS78Nc0xB8jGMM5Q_ifAgz-xWfByo8YvA5f9-"; 
-    let db = null;
+    let userLogged = { nome: "Usuário", cpf: "", perfil: "" };
     let chartInstance = null;
-
-    function getDb() {
-      if (!db && window.supabase && window.supabase.createClient) {
-        try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){}
-      }
-      return db;
-    }
+    let sigPadMap = {};
 
     function fazerLogin() {
-      const nomeInput = document.getElementById('login-nome');
-      const nome = (nomeInput && nomeInput.value.trim()) ? nomeInput.value.trim() : "Usuário";
+      const nome = document.getElementById('login-nome').value.trim() || "Colaborador";
+      const cpf = document.getElementById('login-cpf').value.trim() || "Não informado";
       const perfil = document.getElementById('login-perfil').value;
+
+      userLogged = { nome, cpf, perfil };
 
       document.getElementById('screen-login').style.display = 'none';
 
       if (perfil === 'gestor') {
         document.getElementById('screen-manager').style.display = 'block';
         document.getElementById('gestor-boas-vindas').innerText = "💻 Gestor: " + nome;
-        renderGraficoCRM();
       } else if (perfil === 'fabrica') {
         document.getElementById('screen-fabrica').style.display = 'block';
         document.getElementById('fabrica-boas-vindas').innerText = "🏭 Fábrica: " + nome;
@@ -268,7 +272,7 @@
         document.getElementById('medidor-boas-vindas').innerText = "📏 Medidor: " + nome;
       } else if (perfil === 'instalador') {
         document.getElementById('screen-instalador').style.display = 'block';
-        document.getElementById('instalador-boas-vindas').innerText = "👷‍♂️ Instalador: " + nome;
+        document.getElementById('instalador-boas-vindas').innerText = "👷‍♂️ Instalador: " + nome + " (CPF: " + cpf + ")";
       }
 
       carregarDados();
@@ -276,22 +280,12 @@
 
     function logout() { location.reload(); }
 
-    function formatarDataHora(dataRaw, horaRaw) {
-      if (!dataRaw) return horaRaw || 'A combinar';
-      const partes = dataRaw.split('-');
-      const dataFmt = partes[2] + "/" + partes[1] + "/" + partes[0];
-      return horaRaw ? dataFmt + " às " + horaRaw : dataFmt;
-    }
-
     function getLocalOS() {
       const dados = localStorage.getItem('crm_os_data');
       if (!dados) {
-        const amostra = [
-          { id: "5625", cliente: "João Souza", horario_agendado: "10/10/2026 às 14:30", endereco: "São José do Rio Preto", produto: "Janela: 1500mm x 1200mm", status: "Progress", checkin: false },
-          { id: "5626", cliente: "Maria Oliveira", horario_agendado: "12/10/2026 às 09:00", endereco: "Rua das Flores, 120", produto: "Porta Balcão (Aguardando Medição)", status: "Pendente", checkin: false }
-        ];
-        localStorage.setItem('crm_os_data', JSON.stringify(amostra));
-        return amostra;
+        // Inicializa totalmente zerado ou apenas com lista vazia para puxar real
+        localStorage.setItem('crm_os_data', JSON.stringify([]));
+        return [];
       }
       return JSON.parse(dados);
     }
@@ -300,7 +294,14 @@
       localStorage.setItem('crm_os_data', JSON.stringify(data));
     }
 
-    async function cadastrarOS(e) {
+    function formatarDataHora(dataRaw, horaRaw) {
+      if (!dataRaw) return horaRaw || 'A combinar';
+      const partes = dataRaw.split('-');
+      const dataFmt = partes[2] + "/" + partes[1] + "/" + partes[0];
+      return horaRaw ? dataFmt + " às " + horaRaw : dataFmt;
+    }
+
+    function cadastrarOS(e) {
       if (e) e.preventDefault();
 
       const cliente = document.getElementById('cad-cliente').value.trim();
@@ -323,6 +324,7 @@
         endereco,
         produto: produtoDesc,
         status: 'Pendente',
+        etapaFabrica: 'Corte de Perfis',
         checkin: false
       };
 
@@ -330,12 +332,7 @@
       listaLocal.unshift(novaOS);
       setLocalOS(listaLocal);
 
-      const client = getDb();
-      if (client) {
-        try { await client.from('ordem_servico').insert([{ cliente, horario_agendado: dataHoraFormatada, endereco, produto: produtoDesc, status: 'Pendente' }]); } catch(err){}
-      }
-
-      alert("🎉 Visita agendada com sucesso!");
+      alert("🎉 Pedido #" + novaOS.id + " cadastrado com sucesso!");
       document.getElementById('cad-cliente').value = '';
       document.getElementById('cad-data').value = '';
       document.getElementById('cad-horario').value = '';
@@ -346,19 +343,24 @@
       carregarDados();
     }
 
-    async function atualizarStatus(id, novoStatus) {
+    function atualizarStatus(id, novoStatus) {
       const listaLocal = getLocalOS();
       const item = listaLocal.find(o => o.id == id);
       if (item) {
         item.status = novoStatus;
         setLocalOS(listaLocal);
       }
+      carregarDados();
+    }
 
-      const client = getDb();
-      if (client) {
-        try { await client.from('ordem_servico').update({ status: novoStatus }).eq('id', id); } catch(e){}
+    function atualizarEtapaFabrica(id, novaEtapa) {
+      const listaLocal = getLocalOS();
+      const item = listaLocal.find(o => o.id == id);
+      if (item) {
+        item.etapaFabrica = novaEtapa;
+        if (novaEtapa === 'Pronto p/ Instalação') item.status = 'Fabrica';
+        setLocalOS(listaLocal);
       }
-
       carregarDados();
     }
 
@@ -369,22 +371,98 @@
         item.checkin = true;
         item.horarioCheckin = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         setLocalOS(listaLocal);
-        alert("📍 Check-in realizado às " + item.horarioCheckin + "!");
+        alert("📍 Check-in realizado com sucesso!");
         carregarDados();
       }
     }
 
-    function concluirInstalacao(id) {
-      const obs = document.getElementById('obs-inst-' + id).value.trim();
+    function limparAssinatura(id) {
+      if (sigPadMap[id]) sigPadMap[id].clear();
+    }
+
+    function finalizarEGerarPDF(id) {
+      const pad = sigPadMap[id];
+      if (!pad || pad.isEmpty()) {
+        alert("Por favor, solicite a assinatura do cliente na tela antes de finalizar!");
+        return;
+      }
+
+      const sigImgData = pad.toDataURL(); // Imagem da assinatura
+      const obsInst = document.getElementById('obs-inst-' + id) ? document.getElementById('obs-inst-' + id).value.trim() : "";
+      
       const listaLocal = getLocalOS();
       const item = listaLocal.find(o => o.id == id);
+
       if (item) {
+        const dataConclusao = new Date().toLocaleDateString('pt-BR') + " às " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
         item.status = 'Concluido';
-        if (obs) item.obsInstalacao = obs;
+        item.assinaturaImg = sigImgData;
+        item.dataConclusao = dataConclusao;
+        item.instaladorNome = userLogged.nome;
+        item.instaladorCPF = userLogged.cpf;
+        item.obsInstalacao = obsInst;
+
         setLocalOS(listaLocal);
-        alert("🎉 Instalação marcada como Concluída!");
+
+        // Gerar PDF Automático
+        gerarPDFTermo(item);
+        alert("🎉 Instalação finalizada e Termo de Conclusão gerado em PDF!");
         carregarDados();
       }
+    }
+
+    function gerarPDFTermo(os) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("TERMO DE CONCLUSÃO E ENTREGA DE INSTALAÇÃO", 15, 20);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Ordem de Serviço Nº: #${os.id}`, 15, 32);
+      doc.text(`Data e Hora da Finalização: ${os.dataConclusao || new Date().toLocaleString()}`, 15, 40);
+
+      doc.setLineWidth(0.5);
+      doc.line(15, 45, 195, 45);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("1. DADOS DO CLIENTE E LOCAL", 15, 55);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Cliente: ${os.cliente}`, 15, 63);
+      doc.text(`Endereço: ${os.endereco}`, 15, 71);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("2. ESPECIFICAÇÃO DOS ITENS INSTALADOS", 15, 83);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Itens: ${os.produto}`, 15, 91);
+      if (os.obsInstalacao) {
+        doc.text(`Observações da Instalação: ${os.obsInstalacao}`, 15, 99);
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.text("3. RESPONSÁVEL TÉCNICO / INSTALADOR", 15, 112);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Profissional: ${os.instaladorNome || userLogged.nome}`, 15, 120);
+      doc.text(`CPF/Identificação: ${os.instaladorCPF || userLogged.cpf}`, 15, 128);
+
+      doc.line(15, 135, 195, 135);
+
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.text("Declaro para os devidos fins que a instalação das esquadrias/vidros foi executada e entregue", 15, 145);
+      doc.text("em perfeitas condições de funcionamento e acabamento no endereço indicado acima.", 15, 151);
+
+      if (os.assinaturaImg) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Assinatura de Aceite do Cliente:", 15, 165);
+        doc.addImage(os.assinaturaImg, 'PNG', 15, 170, 80, 30);
+      }
+
+      doc.save(`Termo_Instalacao_OS_${os.id}_${os.cliente.replace(/\s+/g, '_')}.pdf`);
     }
 
     function abrirFormMedicao(id) {
@@ -409,7 +487,7 @@
       container.appendChild(div);
     }
 
-    async function salvarMultiplasMedicoes(id) {
+    function salvarMultiplasMedicoes(id) {
       const container = document.getElementById('itens-container-' + id);
       const rows = container.getElementsByClassName('item-row');
       let resumoMedicao = [];
@@ -425,7 +503,7 @@
       let textoFinal = resumoMedicao.join(" | ");
       if (obsExtra) textoFinal += " (Obs: " + obsExtra + ")";
 
-      if (!textoFinal) { alert("Preencha ao menos largura e altura!"); return; }
+      if (!textoFinal) { alert("Preencha a largura e altura!"); return; }
 
       const listaLocal = getLocalOS();
       const item = listaLocal.find(o => o.id == id);
@@ -435,14 +513,11 @@
         setLocalOS(listaLocal);
       }
 
-      alert("✅ Medições salvas no sistema!");
+      alert("✅ Medições registradas!");
       carregarDados();
     }
 
-    function openMaps(address) { window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address), '_blank'); }
-    function openWaze(address) { window.open("https://waze.com/ul?q=" + encodeURIComponent(address) + "&navigate=yes", '_blank'); }
-
-    function renderGraficoCRM() {
+    function renderGraficoCRM(cP, cM, cF, cC) {
       const ctx = document.getElementById('crmChart');
       if (!ctx) return;
       if (chartInstance) chartInstance.destroy();
@@ -450,21 +525,26 @@
       chartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: ['Julho', 'Agosto', 'Setembro', 'Outubro'],
-          datasets: [
-            { label: 'Medições Realizadas', data: [12, 19, 15, 22], backgroundColor: '#2563eb' },
-            { label: 'Obras Concluídas', data: [8, 14, 12, 18], backgroundColor: '#16a34a' }
-          ]
+          labels: ['Agendados', 'Medidos', 'Em Fabricação', 'Concluídos'],
+          datasets: [{
+            label: 'Quantidade de Pedidos',
+            data: [cP, cM, cF, cC],
+            backgroundColor: ['#d97706', '#2563eb', '#7c3aed', '#16a34a']
+          }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } }
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
         }
       });
     }
 
-    async function carregarDados() {
+    function openMaps(address) { window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address), '_blank'); }
+    function openWaze(address) { window.open("https://waze.com/ul?q=" + encodeURIComponent(address) + "&navigate=yes", '_blank'); }
+
+    function carregarDados() {
       let lista = getLocalOS();
       let cP = 0, cM = 0, cF = 0, cC = 0;
 
@@ -480,6 +560,7 @@
         document.getElementById('crm-cnt-medido').innerText = cM;
         document.getElementById('crm-cnt-fabrica').innerText = cF;
         document.getElementById('crm-cnt-concluido').innerText = cC;
+        renderGraficoCRM(cP, cM, cF, cC);
       }
 
       // RENDER GESTOR
@@ -498,33 +579,41 @@
               '<option value="Fabrica" ' + (os.status==='Fabrica'?'selected':'') + '>3. Em Fabricação</option>' +
               '<option value="Concluido" ' + (os.status==='Concluido'?'selected':'') + '>4. Concluído</option>' +
             '</select>' +
+            (os.status === 'Concluido' ? '<button class="btn btn-outline" style="margin-top:4px; padding:4px 8px; font-size:11px;" onclick=\'gerarPDFTermo(' + JSON.stringify(os) + ')\'>📄 Baixar PDF</button>' : '') +
           '</td>' +
         '</tr>';
       });
-      if (document.getElementById('os-list-desktop')) document.getElementById('os-list-desktop').innerHTML = desktopHtml;
+      if (document.getElementById('os-list-desktop')) {
+        document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum pedido cadastrado no momento.</td></tr>';
+      }
 
-      // RENDER KANBAN FÁBRICA
-      const cols = { Pendente: '', Progress: '', Fabrica: '', Concluido: '' };
+      // RENDER KANBAN FÁBRICA (EXCLUSIVO PRODUÇÃO)
+      const kanbanFab = { corte: '', usinagem: '', montagem: '', pronto: '' };
       lista.forEach(os => {
+        const etapa = os.etapaFabrica || 'Corte de Perfis';
         const card = `
           <div class="kanban-card">
             <strong>OS #${os.id} - ${os.cliente}</strong>
             <p style="font-size:12px; color:#475569; margin:4px 0;">${os.produto}</p>
-            <select onchange="atualizarStatus(${os.id}, this.value)" style="font-size:11px; padding:4px;">
-              <option value="Pendente" ${os.status==='Pendente'?'selected':''}>1. Agendado</option>
-              <option value="Progress" ${os.status==='Progress'?'selected':''}>2. Medição Realizada</option>
-              <option value="Fabrica" ${os.status==='Fabrica'?'selected':''}>3. Em Fabricação</option>
-              <option value="Concluido" ${os.status==='Concluido'?'selected':''}>4. Concluído</option>
+            <select onchange="atualizarEtapaFabrica(${os.id}, this.value)" style="font-size:11px; padding:4px; margin:0;">
+              <option value="Corte de Perfis" ${etapa==='Corte de Perfis'?'selected':''}>1. Corte de Perfis</option>
+              <option value="Usinagem" ${etapa==='Usinagem'?'selected':''}>2. Usinagem</option>
+              <option value="Montagem & Vidro" ${etapa==='Montagem & Vidro'?'selected':''}>3. Montagem & Vidro</option>
+              <option value="Pronto p/ Instalação" ${etapa==='Pronto p/ Instalação'?'selected':''}>4. Pronto p/ Instalação</option>
             </select>
           </div>`;
-        if (cols[os.status] !== undefined) cols[os.status] += card;
+        
+        if (etapa === 'Corte de Perfis') kanbanFab.corte += card;
+        else if (etapa === 'Usinagem') kanbanFab.usinagem += card;
+        else if (etapa === 'Montagem & Vidro') kanbanFab.montagem += card;
+        else if (etapa === 'Pronto p/ Instalação') kanbanFab.pronto += card;
       });
 
-      if (document.getElementById('kanban-pendente')) {
-        document.getElementById('kanban-pendente').innerHTML = cols.Pendente || '<small>Vazio</small>';
-        document.getElementById('kanban-progress').innerHTML = cols.Progress || '<small>Vazio</small>';
-        document.getElementById('kanban-fabrica').innerHTML = cols.Fabrica || '<small>Vazio</small>';
-        document.getElementById('kanban-concluido').innerHTML = cols.Concluido || '<small>Vazio</small>';
+      if (document.getElementById('kanban-fab-corte')) {
+        document.getElementById('kanban-fab-corte').innerHTML = kanbanFab.corte || '<small style="color:#94a3b8;">Nenhum item</small>';
+        document.getElementById('kanban-fab-usinagem').innerHTML = kanbanFab.usinagem || '<small style="color:#94a3b8;">Nenhum item</small>';
+        document.getElementById('kanban-fab-montagem').innerHTML = kanbanFab.montagem || '<small style="color:#94a3b8;">Nenhum item</small>';
+        document.getElementById('kanban-fab-pronto').innerHTML = kanbanFab.pronto || '<small style="color:#94a3b8;">Nenhum item</small>';
       }
 
       // RENDER MEDIDOR
@@ -539,7 +628,7 @@
             <button class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
             <button class="btn btn-waze" onclick="openWaze('${os.endereco}')">🚗 Waze</button>
           </div>
-          <button class="btn btn-action" onclick="abrirFormMedicao(${os.id})">📐 Inserir Medições</button>
+          <button class="btn btn-action" onclick="abrirFormMedicao(${os.id})">📐 Registrar Medições</button>
           <div id="form-medicao-${os.id}" class="modal-medicao" style="display:none;">
             <div id="itens-container-${os.id}">
               <div class="item-row">
@@ -550,21 +639,23 @@
             </div>
             <button class="btn btn-add" onclick="adicionarLinhaItem(${os.id})">➕ Outro Item</button>
             <input type="text" id="obs-${os.id}" placeholder="Observações" />
-            <button class="btn btn-action" onclick="salvarMultiplasMedicoes(${os.id})">💾 Salvar Medições</button>
+            <button class="btn btn-action" onclick="salvarMultiplasMedicoes(${os.id})">💾 Salvar no CRM</button>
           </div>
         </div>`;
       });
-      if (document.getElementById('os-list-medidor')) document.getElementById('os-list-medidor').innerHTML = medidorHtml || '<p style="color:white;">Nenhuma visita.</p>';
+      if (document.getElementById('os-list-medidor')) document.getElementById('os-list-medidor').innerHTML = medidorHtml || '<p style="color:white; text-align:center;">Nenhuma ordem pendente.</p>';
 
       // RENDER INSTALADOR
       let instaladorHtml = '';
-      lista.filter(o => o.status === 'Fabrica' || o.status === 'Progress' || o.status === 'Concluido').forEach(os => {
+      const pendentesInstalacao = lista.filter(o => o.status !== 'Pendente');
+      
+      pendentesInstalacao.forEach(os => {
         instaladorHtml += `<div class="card">
-          <div style="display:flex; justify-content:space-between;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
             <strong>OS #${os.id} - ${os.cliente}</strong>
             <span class="badge badge-${os.status}">${os.status}</span>
           </div>
-          <div style="font-size:13px; margin-top:4px;"><b>Itens a Instalar:</b> ${os.produto}</div>
+          <div style="font-size:13px; margin-top:6px;"><b>Itens a Instalar:</b> ${os.produto}</div>
           <div class="address-box">📍 ${os.endereco}</div>
           <div class="btn-grid">
             <button class="btn btn-maps" onclick="openMaps('${os.endereco}')">🗺️ Maps</button>
@@ -575,11 +666,42 @@
             `<button class="btn btn-primary" onclick="fazerCheckin(${os.id})">📍 Realizar Check-in na Obra</button>` : 
             `<div style="color:green; font-weight:bold; font-size:12px; margin-bottom:8px;">✅ Check-in efetuado às ${os.horarioCheckin}</div>`
           }
-          <input type="text" id="obs-inst-${os.id}" placeholder="Observações da instalação (ex: silicone aplicado)" />
-          <button class="btn btn-action" onclick="concluirInstalacao(${os.id})">✅ Finalizar Instalação</button>
+
+          ${os.status !== 'Concluido' ? `
+            <div style="margin-top:10px;">
+              <label><b>Assinatura do Cliente (Desenhe abaixo):</b></label>
+              <div class="signature-container">
+                <canvas id="sig-canvas-${os.id}"></canvas>
+              </div>
+              <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="limparAssinatura(${os.id})">🗑️ Limpar Assinatura</button>
+              
+              <input type="text" id="obs-inst-${os.id}" placeholder="Observações da instalação" style="margin-top:8px;" />
+              <button class="btn btn-action" onclick="finalizarEGerarPDF(${os.id})">✅ Finalizar & Gerar Termo PDF</button>
+            </div>
+          ` : `
+            <div style="background:#dcfce7; padding:8px; border-radius:6px; font-size:12px; color:#166534; margin-top:8px;">
+              <b>Instalação Finalizada em ${os.dataConclusao}</b> por ${os.instaladorNome} (CPF:${os.instaladorCPF})
+            </div>
+            <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick='gerarPDFTermo(${JSON.stringify(os)})'>📄 Baixar PDF da Instalação</button>
+          `}
         </div>`;
       });
-      if (document.getElementById('os-list-instalador')) document.getElementById('os-list-instalador').innerHTML = instaladorHtml || '<p style="color:white;">Nenhuma instalação disponível.</p>';
+
+      if (document.getElementById('os-list-instalador')) {
+        document.getElementById('os-list-instalador').innerHTML = instaladorHtml || '<p style="color:white; text-align:center;">Nenhuma instalação pendente.</p>';
+        
+        // Inicializar SignaturePad nos Canvas de assinatura
+        setTimeout(() => {
+          pendentesInstalacao.forEach(os => {
+            if (os.status !== 'Concluido') {
+              const canvas = document.getElementById(`sig-canvas-${os.id}`);
+              if (canvas) {
+                sigPadMap[os.id] = new SignaturePad(canvas, { backgroundColor: 'rgb(250, 250, 250)' });
+              }
+            }
+          });
+        }, 100);
+      }
     }
   </script>
 </body>
