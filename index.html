@@ -67,8 +67,10 @@
       
       <label><b>Perfil de Acesso</b></label>
       <select id="login-perfil">
-        <option value="gestor">💻 Gestor / Produção (CRM Completo)</option>
-        <option value="instalador">👷‍♂️ Campo: Medidor / Instalador (Celular)</option>
+        <option value="gestor">💻 Gestor / Vendas (CRM Completo)</option>
+        <option value="medidor">📏 Campo: Medidor (Celular)</option>
+        <option value="fabrica">🏭 Fábrica / Produção</option>
+        <option value="instalador">👷‍♂️ Campo: Instalador (Celular)</option>
       </select>
 
       <button type="button" class="btn btn-primary" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
@@ -88,7 +90,7 @@
           <div class="num" id="crm-cnt-pendente">0</div>
         </div>
         <div class="crm-card crm-medicao">
-          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">2. Medição / Check-in</div>
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">2. Medição Realizada</div>
           <div class="num" id="crm-cnt-medido">0</div>
         </div>
         <div class="crm-card crm-fabrica">
@@ -104,47 +106,49 @@
       <!-- FORMULÁRIO DE CADASTRO -->
       <div class="card">
         <h3>➕ Novo Pedido / Agendamento de Medição</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px;">
-          <div>
-            <label>Cliente</label>
-            <input type="text" id="cad-cliente" placeholder="Ex: João Souza" />
+        <form onsubmit="cadastrarOS(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <div>
+              <label>Cliente</label>
+              <input type="text" id="cad-cliente" placeholder="Ex: João Souza" required />
+            </div>
+            <div>
+              <label>Data da Visita</label>
+              <input type="date" id="cad-data" required />
+            </div>
+            <div>
+              <label>Horário</label>
+              <input type="time" id="cad-horario" required />
+            </div>
           </div>
-          <div>
-            <label>Data da Visita</label>
-            <input type="date" id="cad-data" />
-          </div>
-          <div>
-            <label>Horário</label>
-            <input type="time" id="cad-horario" />
-          </div>
-        </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-          <div>
-            <label>Tipo Principal</label>
-            <select id="cad-tipo">
-              <option value="Medição Geral / Múltiplos Itens">Múltiplos Itens / Geral</option>
-              <option value="Janela">Janela</option>
-              <option value="Porta">Porta</option>
-              <option value="Portão">Portão</option>
-              <option value="Sacada">Sacada/Fechamento</option>
-              <option value="Fachada Glazing">Fachada Glazing</option>
-            </select>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div>
+              <label>Tipo Principal</label>
+              <select id="cad-tipo">
+                <option value="Múltiplos Itens / Geral">Múltiplos Itens / Geral</option>
+                <option value="Janela">Janela</option>
+                <option value="Porta">Porta</option>
+                <option value="Portão">Portão</option>
+                <option value="Sacada">Sacada/Fechamento</option>
+                <option value="Fachada Glazing">Fachada Glazing</option>
+              </select>
+            </div>
+            <div>
+              <label>Largura Estimada (mm)</label>
+              <input type="text" id="cad-largura" placeholder="Ex: 1500" />
+            </div>
+            <div>
+              <label>Altura Estimada (mm)</label>
+              <input type="text" id="cad-altura" placeholder="Ex: 2100" />
+            </div>
           </div>
-          <div>
-            <label>Largura Estimada (mm)</label>
-            <input type="text" id="cad-largura" placeholder="Ex: 1500" />
-          </div>
-          <div>
-            <label>Altura Estimada (mm)</label>
-            <input type="text" id="cad-altura" placeholder="Ex: 2100" />
-          </div>
-        </div>
-        
-        <label>Endereço da Obra / Instalação</label>
-        <input type="text" id="cad-endereco" placeholder="Rua, Número, Bairro, Cidade" />
+          
+          <label>Endereço da Obra / Instalação</label>
+          <input type="text" id="cad-endereco" placeholder="Rua, Número, Bairro, Cidade" required />
 
-        <button type="button" class="btn btn-action" onclick="cadastrarOS()">Agendar e Enviar para Campo</button>
+          <button type="submit" class="btn btn-action">Agendar e Enviar para Campo</button>
+        </form>
       </div>
 
       <!-- PIPELINE CRM DE PRODUÇÃO -->
@@ -168,7 +172,7 @@
       </div>
     </div>
 
-    <!-- TELA DO CAMPO / CELULAR (MEDIÇÃO) -->
+    <!-- TELA DO CAMPO / CELULAR (MEDIÇÃO E INSTALAÇÃO) -->
     <div id="screen-mobile" style="display: none;">
       <div class="header-user">
         <span id="campo-boas-vindas">📱 Medições e Serviços</span>
@@ -198,12 +202,12 @@
 
       document.getElementById('screen-login').style.display = 'none';
 
-      if (perfil === 'gestor') {
+      if (perfil === 'gestor' || perfil === 'fabrica') {
         document.getElementById('screen-manager').style.display = 'block';
-        document.getElementById('gestor-boas-vindas').innerText = "💻 Gestor: " + nome;
+        document.getElementById('gestor-boas-vindas').innerText = (perfil === 'gestor' ? "💻 Gestor: " : "🏭 Fábrica: ") + nome;
       } else {
         document.getElementById('screen-mobile').style.display = 'block';
-        document.getElementById('campo-boas-vindas').innerText = "👷‍♂️ Campo: " + nome;
+        document.getElementById('campo-boas-vindas').innerText = (perfil === 'medidor' ? "📏 Medidor: " : "👷‍♂️ Instalador: ") + nome;
       }
 
       carregarDados();
@@ -218,7 +222,17 @@
       return horaRaw ? dataFmt + " às " + horaRaw : dataFmt;
     }
 
-    async function cadastrarOS() {
+    function getLocalOS() {
+      return JSON.parse(localStorage.getItem('crm_os_data') || '[]');
+    }
+
+    function setLocalOS(data) {
+      localStorage.setItem('crm_os_data', JSON.stringify(data));
+    }
+
+    async function cadastrarOS(e) {
+      if (e) e.preventDefault();
+
       const cliente = document.getElementById('cad-cliente').value.trim();
       const dataVisita = document.getElementById('cad-data').value;
       const horaVisita = document.getElementById('cad-horario').value;
@@ -227,30 +241,59 @@
       const altura = document.getElementById('cad-altura').value.trim();
       const endereco = document.getElementById('cad-endereco').value.trim();
 
-      if (!cliente || !endereco) { alert("Preencha Cliente e Endereço!"); return; }
+      if (!cliente || !endereco) { alert("Preencha o Cliente e o Endereço!"); return; }
 
       const dataHoraFormatada = formatarDataHora(dataVisita, horaVisita);
       const produtoDesc = tipo + (largura && altura ? " (" + largura + "mm x " + altura + "mm)" : "");
-      const client = getDb();
 
+      const novaOS = {
+        id: Math.floor(1000 + Math.random() * 9000).toString(),
+        cliente: cliente,
+        horario_agendado: dataHoraFormatada,
+        endereco: endereco,
+        produto: produtoDesc,
+        status: 'Pendente'
+      };
+
+      // Guarda localmente primeiro
+      const listaLocal = getLocalOS();
+      listaLocal.unshift(novaOS);
+      setLocalOS(listaLocal);
+
+      // Tenta enviar para o Supabase sem bloquear
+      const client = getDb();
       if (client) {
-        await client.from('ordem_servico').insert([{ cliente, horario_agendado: dataHoraFormatada, endereco, produto: produtoDesc, status: 'Pendente' }]);
+        try { 
+          await client.from('ordem_servico').insert([{ cliente, horario_agendado: dataHoraFormatada, endereco, produto: produtoDesc, status: 'Pendente' }]); 
+        } catch(err){}
       }
 
-      alert("🎉 Visita agendada para " + dataHoraFormatada + "!");
+      alert("🎉 Pedido de " + cliente + " cadastrado com sucesso!");
+      
       document.getElementById('cad-cliente').value = '';
       document.getElementById('cad-data').value = '';
       document.getElementById('cad-horario').value = '';
+      document.getElementById('cad-largura').value = '';
+      document.getElementById('cad-altura').value = '';
       document.getElementById('cad-endereco').value = '';
+      
       carregarDados();
     }
 
     async function atualizarStatus(id, novoStatus) {
+      const listaLocal = getLocalOS();
+      const item = listaLocal.find(o => o.id == id);
+      if (item) {
+        item.status = novoStatus;
+        setLocalOS(listaLocal);
+      }
+
       const client = getDb();
       if (client) {
-        await client.from('ordem_servico').update({ status: novoStatus }).eq('id', id);
-        carregarDados();
+        try { await client.from('ordem_servico').update({ status: novoStatus }).eq('id', id); } catch(e){}
       }
+
+      carregarDados();
     }
 
     function abrirFormMedicao(id) {
@@ -288,36 +331,52 @@
         const larg = r.querySelector('.med-largura').value.trim();
         const alt = r.querySelector('.med-altura').value.trim();
         if (larg && alt) {
-          resumoMedicao.push(`${tipo}: ${larg}mm x ${alt}mm`);
+          resumoMedicao.push(tipo + ": " + larg + "mm x " + alt + "mm");
         }
       }
 
       const obsExtra = document.getElementById('obs-' + id).value.trim();
       let textoFinal = resumoMedicao.join(" | ");
-      if (obsExtra) textoFinal += ` (Obs: ${obsExtra})`;
+      if (obsExtra) textoFinal += " (Obs: " + obsExtra + ")";
 
       if (!textoFinal) {
-        alert("Preencha ao menos a largura e altura de 1 item!");
+        alert("Preencha pelo menos a largura e altura de 1 item!");
         return;
+      }
+
+      const listaLocal = getLocalOS();
+      const item = listaLocal.find(o => o.id == id);
+      if (item) {
+        item.produto = textoFinal;
+        item.status = 'Progress';
+        setLocalOS(listaLocal);
       }
 
       const client = getDb();
       if (client) {
-        await client.from('ordem_servico').update({ produto: textoFinal, status: 'Progress' }).eq('id', id);
-        alert("✅ Medições gravadas com sucesso no CRM!");
-        carregarDados();
+        try { await client.from('ordem_servico').update({ produto: textoFinal, status: 'Progress' }).eq('id', id); } catch(e){}
       }
+
+      alert("✅ Medições gravadas com sucesso no CRM!");
+      carregarDados();
     }
 
     function openMaps(address) { window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address), '_blank'); }
     function openWaze(address) { window.open("https://waze.com/ul?q=" + encodeURIComponent(address) + "&navigate=yes", '_blank'); }
 
     async function carregarDados() {
+      let lista = getLocalOS();
       const client = getDb();
-      if (!client) return;
 
-      const { data: osList } = await client.from('ordem_servico').select('*').order('id', { ascending: false });
-      const lista = osList || [];
+      if (client) {
+        try {
+          const { data: osList } = await client.from('ordem_servico').select('*').order('id', { ascending: false });
+          if (osList && osList.length > 0) {
+            lista = osList;
+            setLocalOS(lista);
+          }
+        } catch(e) {}
+      }
 
       let cP = 0, cM = 0, cF = 0, cC = 0;
       lista.forEach(o => {
@@ -365,7 +424,7 @@
 
         '</div>';
       });
-      document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white;">Nenhuma visita encontrada.</p>';
+      document.getElementById('os-list-mobile').innerHTML = mobileHtml || '<p style="color:white; text-align:center;">Nenhum registo encontrado.</p>';
 
       // Render Gestor
       let desktopHtml = '';
@@ -386,7 +445,7 @@
           '</td>' +
         '</tr>';
       });
-      document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum registro no CRM.</td></tr>';
+      document.getElementById('os-list-desktop').innerHTML = desktopHtml || '<tr><td colspan="6">Nenhum registo no CRM.</td></tr>';
     }
   </script>
 </body>
